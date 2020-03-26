@@ -1,9 +1,11 @@
-const fs = require("fs");
-const { spawnSync } = require( 'child_process' );
 const print  = s => console.log(s);
 const printj = s => console.log(JSON.stringify(s, null, 2));
 
-let q = JSON.parse(fs.readFileSync("./quran.json"));
+const QURAN =
+undefined /*QURAN_JSON_HERE*/
+;
+
+let q = QURAN || JSON.parse(require("fs").readFileSync("./quran.json"));
 
 let suras_names = {};
 for (let i = 0; i < q.suras.length; ++i) {
@@ -31,7 +33,11 @@ function get_sura(target) {
             }
         }
     }
-    return res;
+    if (!res) {
+        throw new Error(`No sura names '${target}' found`);
+    } else {
+        return res;
+    }
 }
 
 function loc(s, a) {
@@ -150,8 +156,7 @@ function test_search() {
 
 // UI --------------------------------------------------------
 
-let default_tcols = process.stdout.columns ||
-      Number(spawnSync("tput", [ "cols" ]).stdout.toString());
+let default_tcols = process.stdout.columns;
 
 function wrap(s) {
     if (default_tcols == -1) return s;
@@ -192,7 +197,7 @@ function print_sura_with_tafseer(s, t) {
     print('');
     for (let a of q.suras[s - 1].ayas) {
         printw(a.text_simple + ` {${loc(a.loc).aya}}`);
-        printw(q.tafseer[t][a.index]);
+        printw("> " + q.tafseer[t][a.index]);
         print('');
     }
 }
@@ -202,22 +207,26 @@ function rand(min, max) {
 }
 
 function main() {
-    const opts = require("stdio").getopt({
+    const opts = require("/usr/lib/node_modules/stdio").getopt({
         "_meta_":       { maxArgs: 1 },
         "tafseer":      { key: "t", args: 1, description: "Show tafseer"                 },
         "search":       { key: "s", args: 1, description: "Search Quran"                 },
         "list-suras":   { key: "l",          description: "List sura names"              },
         "list-tafseer": { key: "b",          description: "List available tafseer books" },
-        "no-wrap":      { key: "w",          description: "Disable line wrapping"        }
+        "width":        { key: "w", args: 1, description: "Terminal width"               },
+        "no-wrap":      { key: "n",          description: "Disable line wrapping"        }
     });
 
     if (opts["no-wrap"]) {
         default_tcols = -1;
+    } else if (opts.width && opts.width > 0) {
+        default_tcols = opts.width - 1;
     }
 
     if (opts["list-suras"]) {
+        let count = 1;
         for (let s of q.suras) {
-            print(`${s.name} - ${s.name_en}`);
+            print(`${count++}. ${s.name} - ${s.name_en}`);
         }
     } else if (opts["list-tafseer"]) {
         for (let s of Object.keys(q.tafseer)) {
