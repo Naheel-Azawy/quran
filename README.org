@@ -1,0 +1,28 @@
+* Quran
+  A simple CLI Quran written in JavaScript.
+  Web interface is a TODO.
+
+** Install
+   #+begin_src shell
+     $ make
+     $ sudo make install
+   #+end_src
+
+** Usage
+   #+begin_src
+     USAGE: quran [OPTIONS]... args...
+     The following options are supported:
+       -t, --tafseer <ARG>   Show tafseer
+       -s, --search <ARG>    Search Quran
+       -l, --list-suras      List sura names
+       -b, --list-tafseer    List available tafseer books
+       -w, --width <ARG>     Terminal width
+       -n, --no-wrap         Disable line wrapping
+           --help            Display this help and exit
+   #+end_src
+
+** Dependencies
+   node and fribidi.
+
+** License
+   GPL
