@@ -150,10 +150,11 @@ function test_search() {
 
 // UI --------------------------------------------------------
 
-const default_tcols = process.stdout.columns ||
+let default_tcols = process.stdout.columns ||
       Number(spawnSync("tput", [ "cols" ]).stdout.toString());
 
 function wrap(s) {
+    if (default_tcols == -1) return s;
     let w = process.stdout.columns || default_tcols;
     return s.replace(
         new RegExp(`(?![^\\n]{1,${w}}$)([^\\n]{1,${w}})\\s`, 'g'), '$1\n'
@@ -202,12 +203,17 @@ function rand(min, max) {
 
 function main() {
     const opts = require("stdio").getopt({
-        "_meta_": { maxArgs: 1 },
-        "tafseer": { key: "t", args: 1, description: "Show tafseer" },
-        "search": { key: "s", args: 1, description: "Search Quran" },
-        "list-suras": { key: "l", description: "List sura names" },
-        "list-tafseer": { key: "b", description: "List available tafseer books" }
+        "_meta_":       { maxArgs: 1 },
+        "tafseer":      { key: "t", args: 1, description: "Show tafseer"                 },
+        "search":       { key: "s", args: 1, description: "Search Quran"                 },
+        "list-suras":   { key: "l",          description: "List sura names"              },
+        "list-tafseer": { key: "b",          description: "List available tafseer books" },
+        "no-wrap":      { key: "w",          description: "Disable line wrapping"        }
     });
+
+    if (opts["no-wrap"]) {
+        default_tcols = -1;
+    }
 
     if (opts["list-suras"]) {
         for (let s of q.suras) {
