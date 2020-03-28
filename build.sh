@@ -1,9 +1,17 @@
 #!/bin/sh
+
+mkdir -p dist
+
 {
-    cat launcher.sh
     echo 'const QURAN = '
     cat quran.json
     echo ';'
     cat main.js
-} > quran
-chmod +x quran
+} > ./dist/quran.js
+
+{
+    cat launcher.sh
+    cat ./dist/quran.js
+} > ./dist/quran
+
+chmod +x ./dist/quran

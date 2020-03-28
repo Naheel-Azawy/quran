@@ -2,7 +2,7 @@ quran: main.js launcher.sh quran.json
 	./build.sh
 
 install: quran
-	cp quran /bin/ || cp quran /usr/local/bin/
+	cp ./dist/quran /bin/ || cp ./dist/quran /usr/local/bin/
 
 uninstall:
 	rm -f /bin/quran
