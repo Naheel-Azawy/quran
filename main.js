@@ -401,9 +401,6 @@ function quran(args) {
         "no-wrap":      { key: "n",          description: "Disable line wrapping"        }
     }, args);
 
-    console.log(args);
-    console.log(opts);
-
     if (opts["no-wrap"]) {
         default_tcols = -1;
     } else if (opts.width && opts.width > 0) {
