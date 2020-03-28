@@ -1,5 +1,9 @@
 #!/bin/sh
-cat launcher.sh main.js |
-    sed -e '/undefined \/\*QURAN_JSON_HERE\*\// {' \
-        -e 'r ./quran.json' -e 'd' -e '}' > quran
+{
+    cat launcher.sh
+    echo 'const QURAN = '
+    cat quran.json
+    echo ';'
+    cat main.js
+} > quran
 chmod +x quran

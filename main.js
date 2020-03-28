@@ -1,11 +1,5 @@
-const print  = s => console.log(s);
-const printj = s => console.log(JSON.stringify(s, null, 2));
-
-const QURAN =
-undefined /*QURAN_JSON_HERE*/
-;
-
-let q = QURAN || JSON.parse(require("fs").readFileSync("./quran.json"));
+const q = typeof(QURAN) != 'undefined' ? QURAN :
+      JSON.parse(require("fs").readFileSync("./quran.json"));
 
 let suras_names = {};
 for (let i = 0; i < q.suras.length; ++i) {
@@ -24,6 +18,10 @@ function fuzzy(str, s) {
 }
 
 function get_sura(target) {
+    if (target.startsWith("سورة")) {
+        target = target.replace("سورة", "");
+    }
+    target = target.trim();
     let res = suras_names[target];
     if (!res) {
         for (let s of Object.keys(suras_names)) {
@@ -120,8 +118,10 @@ function search(target) {
                     break;
                 }
             } else { // sura_name
-                l = loc(get_sura(sp[0]), 1);
-                if (l) list.push(loc_aya(l));
+                try {
+                    l = loc(get_sura(sp[0]), 1);
+                    if (l) list.push(loc_aya(l));
+                } catch (err) {}
             }
             for (let sura of q.suras) { // full_search
                 for (let aya of sura.ayas) {
@@ -138,79 +138,23 @@ function search(target) {
     return list;
 }
 
-function test_search() {
-    let arr = [
-        "انه من سليمان",
-        "16 1",
-        "page 20",
-        "juzu 30",
-        "الكهف"
-    ];
-
-    for (let t of arr) {
-        print(`SEARCHING FOR '${t}'`);
-        print(search(t));
-        print('');
-    }
-}
-
-// UI --------------------------------------------------------
-
-let default_tcols = process.stdout.columns;
-
-function wrap(s) {
-    if (default_tcols == -1) return s;
-    let w = process.stdout.columns || default_tcols;
-    return s.replace(
-        new RegExp(`(?![^\\n]{1,${w}}$)([^\\n]{1,${w}})\\s`, 'g'), '$1\n'
-    );
-}
-
-function printw(s) {
-    print(wrap(s));
-}
-
-function print_name(s) {
-    printw(`--{ سورة ${q.suras[s - 1].name} }--`);
-    print('');
-}
-
-function print_bismilah(s) {
-    if (s != 1 && s != 9) {
-        printw(q.suras[0].ayas[0].text_simple);
-    }
-}
-
-function print_sura(s) {
-    print_name(s);
-    print_bismilah(s);
-    let t = "";
-    for (let a of q.suras[s - 1].ayas) {
-        t += a.text_simple + ` {${loc(a.loc).aya}} `;
-    }
-    printw(t);
-}
-
-function print_sura_with_tafseer(s, t) {
-    print_name(s);
-    print_bismilah(s);
-    print('');
-    for (let a of q.suras[s - 1].ayas) {
-        printw(a.text_simple + ` {${loc(a.loc).aya}}`);
-        printw("> " + q.tafseer[t][a.index]);
-        print('');
-    }
-}
-
 function rand(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;;
 }
 
-function getopt(opts, args = process.argv) {
-    let bin = args[1];
-    bin = bin.substring(bin.lastIndexOf("/") + 1);
-    args = args.slice(2);
+function getopt(opts, args) {
     let res = {};
+
+    if (!args) {
+        return res;
+    }
+
+    let bin = "quran";
+    if (typeof(process) != 'undefined' && args[0].includes("node")) {
+        bin = args[1];
+        bin = bin.substring(bin.lastIndexOf("/") + 1);
+        args = args.slice(2);
+    }
 
     res.printHelp = function() {
         console.log(`USAGE: ${bin} [OPTIONS]... args...`);
@@ -231,8 +175,8 @@ function getopt(opts, args = process.argv) {
     let err = function(msg) {
         console.log(msg);
         res.printHelp();
-        process.exit(1);
-        return undefined;
+        exit(1);
+        return {};
     };
 
     // map of keys
@@ -260,7 +204,7 @@ function getopt(opts, args = process.argv) {
             if (o == "help") {
                 res.printHelp();
                 args[i] = undefined;
-                process.exit();
+                exit();
             } else if (o in opts) {
                 if (opts[o].args == 1) {
                     if (i + 1 < args.length) {
@@ -299,7 +243,118 @@ function getopt(opts, args = process.argv) {
     return res;
 }
 
-function main() {
+function exit(code) {
+    if (typeof(process) != 'undefined') {
+        process.exit(code);
+    }
+}
+
+function quran(args) {
+    let res_str = "";
+    const print = s => res_str += s + "\n";
+    const printj = s => res_str += JSON.stringify(s, null, 2) + "\n";
+
+    function test_search() {
+        let arr = [
+            "انه من سليمان",
+            "16 1",
+            "page 20",
+            "juzu 30",
+            "الكهف"
+        ];
+
+        for (let t of arr) {
+            print(`SEARCHING FOR '${t}'`);
+            print(search(t));
+            print('');
+        }
+    }
+
+    let default_tcols = typeof(process) != 'undefined' ?
+        process.stdout.columns : -1;
+
+    function wrap(s) {
+        if (default_tcols == -1) return s;
+        let w = default_tcols;
+        return s.replace(
+            new RegExp(`(?![^\\n]{1,${w}}$)([^\\n]{1,${w}})\\s`, 'g'), '$1\n'
+        );
+    }
+
+    function printw(s) {
+        print(wrap(s));
+    }
+
+    function print_name(s) {
+        printw(`--{ سورة ${q.suras[s - 1].name} }--`);
+        print('');
+    }
+
+    function print_bismilah(s) {
+        if (s != 1 && s != 9) {
+            printw(q.suras[0].ayas[0].text_simple);
+        }
+    }
+
+    function print_sura(s) {
+        print_name(s);
+        print_bismilah(s);
+        let t = "";
+        for (let a of q.suras[s - 1].ayas) {
+            t += a.text_simple + ` {${loc(a.loc).aya}} `;
+        }
+        printw(t);
+    }
+
+    function print_sura_with_tafseer(s, t) {
+        print_name(s);
+        print_bismilah(s);
+        print('');
+        for (let a of q.suras[s - 1].ayas) {
+            printw(a.text_simple + ` {${loc(a.loc).aya}}`);
+            printw("> " + q.tafseer[t][a.index]);
+            print('');
+        }
+    }
+
+    if (typeof(args) == 'string') {
+        const matches = {
+            "tafseer": "--tafseer ar",
+            "تفسير": "--tafseer ar",
+            "translation": "--tafseer en",
+            "ترجمة": "--tafseer en",
+            "translation": "--tafseer en",
+            "search": "--search",
+            "بحث": "--search",
+            "suras": "--list-suras",
+            "السور": "--list-suras"
+        };
+        args = args.split(' ');
+        let new_args = [];
+        for (let i = 0; i < args.length; ++i) {
+            if (args[i] in matches) {
+                let match = matches[args[i]];
+                new_args = new_args.concat(match.split(" "));
+                if (match == "--search" &&
+                    i + 1 < args.length &&
+                    (args[i + 1] == "for" || args[i + 1] == "عن")) {
+                    i += 1;
+                }
+                let rest = [];
+                for (let j = i + 1; j < args.length; ++j) {
+                    rest.push(args[j]);
+                }
+                if (rest.length != 0) {
+                    new_args.push(rest.join(" "));
+                }
+                break;
+            } else {
+                new_args.push(args[i]);
+            }
+        }
+        args = new_args;
+    }
+
     const opts = getopt({
         "_meta_":       { maxArgs: 1 },
         "tafseer":      { key: "t", args: 1, description: "Show tafseer"                 },
@@ -308,7 +363,7 @@ function main() {
         "list-tafseer": { key: "b",          description: "List available tafseer books" },
         "width":        { key: "w", args: 1, description: "Terminal width"               },
         "no-wrap":      { key: "n",          description: "Disable line wrapping"        }
-    });
+    }, args);
 
     if (opts["no-wrap"]) {
         default_tcols = -1;
@@ -351,6 +406,10 @@ function main() {
     } else {
         print_sura(rand(1, q.suras.length));
     }
+
+    return res_str;
 }
 
-main();
+if (typeof(process) != 'undefined') {
+    console.log(quran(process.argv));
+}
