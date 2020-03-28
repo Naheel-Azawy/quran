@@ -25,12 +25,24 @@
             <a href="https://github.com/Naheel-Azawy/quran">
                 UNDER DEVELOPMENT - SRC
             </a>
-            <h4 id="con" dir=rtl></h4>
+            <br>
+            <input id="q" type="text"/>
+            <button onclick="update_con()">RUN</button>
+            <br>
+            <h3 id="con" dir=rtl></h3>
         </div></center>
 
         <script>
-         document.getElementById("con").innerHTML =
-             quran().split("\n").join("<br>");
+         function update_con(arg) {
+             if (arg == undefined) {
+                 arg = document.getElementById("q").value;
+             }
+             document.getElementById("con").innerHTML =
+                 quran(arg).split("\n").join("<br>");
+         }
+         update_con(
+             new URL(window.location.href).searchParams.get("q")
+         );
         </script>
     </body>
 </html>

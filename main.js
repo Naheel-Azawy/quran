@@ -323,7 +323,7 @@ function quran(args) {
             "تفسير": "--tafseer ar",
             "translation": "--tafseer en",
             "ترجمة": "--tafseer en",
-            "translation": "--tafseer en",
+            "translate": "--tafseer en",
             "search": "--search",
             "بحث": "--search",
             "suras": "--list-suras",
@@ -413,3 +413,12 @@ function quran(args) {
 if (typeof(process) != 'undefined') {
     console.log(quran(process.argv));
 }
+
+
+/*
+  TODO:
+  - Create links using 'loc()' (option)
+  - Complex text option (uthmani + aya numbers)
+  - Web: enter 'quran()' argument string
+  - Web: picker: sura, juz, etc...
+ */
