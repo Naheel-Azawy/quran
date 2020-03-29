@@ -1,8 +1,10 @@
-quran: main.js launcher.sh quran.json
+./dist/quran.js: main.js launcher.sh quran.json build.sh
 	./build.sh
 
-install: quran
-	cp ./dist/quran /bin/ || cp ./dist/quran /usr/local/bin/
+install: ./dist/quran.js
+	cat launcher.sh ./dist/quran.js > ./dist/quran
+	chmod +x ./dist/quran
+	mv ./dist/quran /bin/ || mv ./dist/quran /usr/local/bin/
 
 uninstall:
 	rm -f /bin/quran
