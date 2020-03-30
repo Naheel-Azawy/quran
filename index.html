@@ -10,13 +10,11 @@
 
          body, button, select, input, a {
              color: #ffffff;
-             /*color: #222222;*/
              font-family: me_quran;
          }
 
          body, button, select, input {
              background-color: #000000;
-             /*background-color: #EDD396;*/
          }
 
          hr {
@@ -44,6 +42,12 @@
                 UNDER DEVELOPMENT - SRC
             </a>
             <br>
+            <table>
+                <tr><button onclick="set_css('b')">BLACK</button></tr>
+                <tr><button onclick="set_css('y')">YELLOW</button></tr>
+                <tr><button onclick="set_css('w')">WHITE</button></tr>
+            </table>
+            <br>
             <input id="q" type="text"/>
             <button onclick="update_con()">RUN</button>
             <br>
@@ -51,6 +55,38 @@
         </div></center>
 
         <script>
+         function set_css(css) {
+             switch (css) {
+                 case "b":
+                     css = `body, button, select, input, a {
+                                color: #ffffff;
+                            }
+                            body, button, select, input {
+                                background-color: #000000;
+                            }`;
+                     break;
+                 case "y":
+                     css = `body, button, select, input, a {
+                                color: #222222;
+                            }
+                            body, button, select, input {
+                                background-color: #EDD396;
+                            }`;
+                     break;
+                 case "w":
+                     css = `body, button, select, input, a {
+                                color: #000000;
+                            }
+                            body, button, select, input {
+                                background-color: #ffffff;
+                            }`;
+                     break;
+             }
+             var style = document.createElement('style')
+             style.innerText = css
+             document.head.appendChild(style)
+         }
+
          function update_con(arg) {
              if (arg == undefined) {
                  arg = document.getElementById("q").value;
@@ -58,6 +94,7 @@
              document.getElementById("con").innerHTML =
                  quran(arg, true).split("\n").join("<br>");
          }
+
          update_con(
              new URL(window.location.href).searchParams.get("q")
          );
