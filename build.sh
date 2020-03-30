@@ -8,11 +8,11 @@ mkdir -p dist
     cat main.js
 } > ./dist/quran.js
 
-[ "$1" != '-q' ] &&
+if [ "$1" != '-q' ]; then
     command -v tsc >/dev/null &&
     command -v uglifyjs >/dev/null &&
     tsc ./dist/quran.js --allowJs --target es5 -outFile ./dist/es5.js &&
     uglifyjs ./dist/es5.js > ./dist/min.js &&
     mv ./dist/min.js ./dist/quran.js &&
     rm ./dist/es5.js
-
+fi
