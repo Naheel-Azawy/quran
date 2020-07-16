@@ -19,10 +19,13 @@ const quran = (function() {
     }
 
     function get_sura(target) {
+        target = target.trim();
+        if (!target) {
+            throw new Error(`Invalid sura name`);
+        }
         if (target.startsWith("سورة")) {
             target = target.replace("سورة", "");
         }
-        target = target.trim();
         let res = suras_names[target];
         if (!res) {
             for (let s of Object.keys(suras_names)) {
@@ -244,6 +247,164 @@ const quran = (function() {
         return res;
     }
 
+    function mkmat(w, h) {
+        let a = new Array(w);
+        for (let i = 0; i < w; ++i) {
+            a[i] = new Array(h).fill(0);
+        }
+        return a;
+    }
+
+    function matstr(m) {
+        let str = "";
+        for (let i = 0; i < m.length; ++i) {
+            for (let j = 0; j < m[i].length; ++j) {
+                if (m[i][j] == Infinity) {
+                    str += "  ∞ ";
+                } else {
+                    str += String(m[i][j]).padStart(3, ' ') + " ";
+                }
+            }
+            str += "\n";
+        }
+        return str;
+    }
+
+    // Use something like `document.getElementById("myObject").width`
+    // to get the width in pixels in case of html
+    function word_width(str) {
+        str = str.replace(/[^\u0621-\u064A0-9{} ]/g, "")
+            .replace(/ﭐ/g, "ا");
+        return str.length;
+    }
+
+    function justify(text, width, simple=false, arabic=false) {
+        // Based on https://github.com/mission-peace/interview/blob/master/src/com/interview/dynamic/TextJustification.java
+        // https://youtu.be/RORuwHiblPc
+
+        text = text.trim();
+
+        if (text.length < width) return text;
+
+        let words = text.split(" ");
+        let cost = mkmat(words.length, words.length);
+
+        // next 2 for loop is used to calculate cost of putting words from
+        // i to j in one line. If words don't fit in one line then we put
+        // Infinity
+
+        for (let i = 0; i < words.length; ++i) {
+            cost[i][i] = width - word_width(words[i]);
+            for (let j = i + 1; j < words.length; ++j) {
+                cost[i][j] = cost[i][j - 1] - word_width(words[j]) - 1;
+            }
+        }
+
+        for (let i = 0; i < words.length; ++i) {
+            for (let j = i; j < words.length; ++j){
+                if (cost[i][j] < 0) {
+                    cost[i][j] = Infinity;
+                } else {
+                    cost[i][j] = Math.pow(cost[i][j], 2) | 0;
+                }
+            }
+        }
+
+        // min_cost from i to len is found by trying
+        // j between i to len and checking which
+        // one has min value
+
+        let min_cost = new Array(words.length);
+        let result  = new Array(words.length);
+        for (let i = words.length - 1; i >= 0; --i) {
+            min_cost[i] = cost[i][words.length - 1];
+            result[i] = words.length;
+            for (let j = words.length - 1; j > i; --j) {
+                if (cost[i][j-1] == Infinity) {
+                    continue;
+                }
+                if (min_cost[i] > min_cost[j] + cost[i][j - 1]) {
+                    min_cost[i] = min_cost[j] + cost[i][j - 1];
+                    result[i] = j;
+                }
+            }
+        }
+
+        // finally put all words with new line added in string
+
+        let i = 0;
+        let j, k;
+        let res = "";
+        do {
+            j = result[i];
+            let line = [];
+            let words_len = 0;
+            for (k = i; k < j; ++k) {
+                line.push(words[k]);
+                words_len += word_width(words[k]);
+            }
+
+            if (simple) {
+                
+                res += line.join(" ") + "\n";
+                
+            } else if (arabic) {
+                
+                // Not after: ا د ذ ر ز و ء
+                // Not before: ء
+                const allowed = "جحخهعغفقثصضطكمنتبيسشظئـ";
+                const tatweel = "ـ";
+                const is_allowed = s => {
+                    for (let c of allowed)
+                        if (s.includes(c)) return true;
+                    return false;
+                };
+                line = line.join(" ");
+                let extension = width - line.length;
+                // Those are reshaped in arabic to one character
+                const how_many_times = (s, t) => s.split(t).length - 1;
+                extension += how_many_times(line, "لا");
+                extension += how_many_times(line, "لأ");
+                extension += how_many_times(line, "لإ");
+                extension += how_many_times(line, "لآ");
+                // extend after every `n` characters
+                let n = line.length / (extension + 1);
+                let pos, cur_pos;
+                for (let c = 1; c <= extension; ++c) {
+                    pos = n * c;
+                    cur_pos = pos;
+                    // TODO: what if this goes infinite?
+                    while (!is_allowed(line.charAt(cur_pos)) ||
+                           cur_pos >= line.length - 1 ||
+                           (cur_pos + 1 < line.length &&
+                            line.charAt(cur_pos + 1) == ' ')) {
+                        cur_pos = (cur_pos + 1) % line.length;
+                    }
+                    line = line.substring(0, cur_pos + 1) + tatweel + line.substring(cur_pos + 1);
+                }
+                res += line + "\n";
+                
+            } else { // Spread spaces between words
+                
+                let spaces = (width - words_len) / (line.length - 1) | 0;
+                let spaces_str = " ".repeat(spaces);
+                for (k = 0; k < line.length - 1; ++k) {
+                    res += line[k] + spaces_str;
+                }
+                // If odd, add the extra space to the end
+                if ((width - words_len) % (line.length - 1) != 0) {
+                    res += " ";
+                }
+                res += line[k] + "\n";
+                
+            }
+
+            i = j;
+        } while(j < words.length);
+
+        return res;
+    }
+
     function exit(code) {
         if (typeof(process) != 'undefined') {
             process.exit(code);
@@ -253,7 +414,6 @@ const quran = (function() {
     function quran(args, complex) {
         let res_str = "";
         const print = s => res_str += s + "\n";
-        const printj = s => res_str += JSON.stringify(s, null, 2) + "\n";
 
         function test_search() {
             let arr = [
@@ -286,6 +446,13 @@ const quran = (function() {
             print(wrap(s));
         }
 
+        function printj(s) {
+            s = s.split("\n");
+            for (let line of s) {
+                print(justify(line, default_tcols, false, true));
+            }
+        }
+
         function ar_num(n) {
             const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
             n += "";
@@ -313,8 +480,8 @@ const quran = (function() {
 
         function get_header(page, juzu) {
             if (page) page = "الصفحة " + page;
-            if (juzu) juzu = "- الجزء " + juzu;
-            let res = `${page} ${juzu}`;
+            if (juzu) juzu = " - الجزء " + juzu;
+            let res = `${page}${juzu}`;
             if (complex) {
                 res = `<h5 style="text-align:center">${res}</h5>`;
             } else {
@@ -347,7 +514,8 @@ const quran = (function() {
                         tmp += `\n<h5 dir=auto>${q.tafseer[tafseer][a.index]}</h5>\n`;
                     }
                 } else {
-                    tmp += a.text_simple + ` {${loc(a.loc).aya}} `;
+                    //tmp += a.text_simple + ` {${loc(a.loc).aya}} `;
+                    tmp += a.text + ` {${loc(a.loc).aya}} `;
                     if (tafseer) {
                         tmp += `\n> ${q.tafseer[tafseer][a.index]}\n\n`;
                     }
@@ -355,10 +523,10 @@ const quran = (function() {
             }
             if (complex) {
                 print('<div class="justify">');
-                printw(tmp);
+                print(tmp);
                 print('</div>');
             } else {
-                printw(tmp);
+                printj(tmp);
             }
         }
 
@@ -377,7 +545,7 @@ const quran = (function() {
                     "suras": "--list-suras",
                     "السور": "--list-suras"
                 };
-                args = args.split(' ');
+                args = args.trim().split(' ');
                 let new_args = [];
                 for (let i = 0; i < args.length; ++i) {
                     if (args[i] in matches) {
@@ -413,6 +581,8 @@ const quran = (function() {
             "width":        { key: "w", args: 1, description: "Terminal width"               },
             "no-wrap":      { key: "n",          description: "Disable line wrapping"        }
         }, args);
+
+        console.log(opts);
 
         if (opts["no-wrap"]) {
             default_tcols = -1;

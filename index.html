@@ -5,7 +5,8 @@
         <style>
          @font-face {
              font-family: 'me_quran';
-             src: URL('json-builder/data/me_quran.ttf') format('truetype');
+             src: URL('fonts/me_quran.ttf') format('truetype');
+             /*src: URL('fonts/KawkabMono-Regular.ttf') format('truetype');*/
          }
 
          body, button, select, input, a {
@@ -70,7 +71,7 @@
                                 color: #222222;
                             }
                             body, button, select, input {
-                                background-color: #EDD396;
+                                background-color: #fafad4;
                             }`;
                      break;
                  case "w":
@@ -91,6 +92,7 @@
              if (arg == undefined) {
                  arg = document.getElementById("q").value;
              }
+             if (!arg) arg = "";
              document.getElementById("con").innerHTML =
                  quran(arg, true).split("\n").join("<br>");
          }
