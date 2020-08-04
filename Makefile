@@ -10,4 +10,7 @@ uninstall:
 	rm -f /bin/quran
 	rm -f /usr/local/bin/quran
 
-.PHONY: install uninstall
+clean:
+	rm -rf dist
+
+.PHONY: install uninstall clean

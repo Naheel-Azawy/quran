@@ -19,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/Naheel-Azawy/quran/issues"
   },
-  "homepage": "https://github.com/Naheel-Azawy/quran#readme"
+  "homepage": "https://github.com/Naheel-Azawy/quran#readme",
+  "dependencies": {
+    "esbuild": "^0.6.16"
+  }
 }

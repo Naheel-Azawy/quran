@@ -514,8 +514,8 @@ const quran = (function() {
                         tmp += `\n<h5 dir=auto>${q.tafseer[tafseer][a.index]}</h5>\n`;
                     }
                 } else {
-                    //tmp += a.text_simple + ` {${loc(a.loc).aya}} `;
-                    tmp += a.text + ` {${loc(a.loc).aya}} `;
+                    tmp += a.text_simple + ` {${loc(a.loc).aya}} `;
+                    //tmp += a.text + ` {${loc(a.loc).aya}} `;
                     if (tafseer) {
                         tmp += `\n> ${q.tafseer[tafseer][a.index]}\n\n`;
                     }
@@ -581,8 +581,6 @@ const quran = (function() {
             "width":        { key: "w", args: 1, description: "Terminal width"               },
             "no-wrap":      { key: "n",          description: "Disable line wrapping"        }
         }, args);
-
-        console.log(opts);
 
         if (opts["no-wrap"]) {
             default_tcols = -1;
