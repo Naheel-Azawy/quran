@@ -413,7 +413,6 @@ const quran = (function() {
 
     function quran(args, complex) {
         let res_str = "";
-        const print = s => res_str += s + "\n";
 
         function test_search() {
             let arr = [
@@ -425,9 +424,7 @@ const quran = (function() {
             ];
 
             for (let t of arr) {
-                print(`SEARCHING FOR '${t}'`);
-                print(search(t));
-                print('');
+                res_str += `SEARCHING FOR '${t}'\n${search(t)}\n`;
             }
         }
 
@@ -439,18 +436,16 @@ const quran = (function() {
             let w = default_tcols;
             return s.replace(
                 new RegExp(`(?![^\\n]{1,${w}}$)([^\\n]{1,${w}})\\s`, 'g'), '$1\n'
-            );
+            ) + "\n";
         }
 
-        function printw(s) {
-            print(wrap(s));
-        }
-
-        function printj(s) {
+        function just(s) {
+            let res = "";
             s = s.split("\n");
             for (let line of s) {
-                print(justify(line, default_tcols, false, true));
+                res += justify(line, default_tcols, false, true) + "\n";
             }
+            return res;
         }
 
         function ar_num(n) {
@@ -463,70 +458,113 @@ const quran = (function() {
             return res;
         }
 
-        function print_name(s) {
+        function get_prev_aya(a) {
+            let l = loc(a.loc);
+            l.aya -= 1;
+            if (l.aya < 1) {
+                l.sura -= 1;
+                if (l.sura < 1) {
+                    return undefined;
+                }
+                l.aya = q.suras[l.sura - 1].ayas.length;
+            }
+            return q.suras[l.sura - 1].ayas[l.aya - 1];
+        }
+
+        function get_name(s) {
             if (complex) {
-                printw(`<h1> { سورة ${q.suras[s - 1].name} } </h1>`);
+                return `<span class="quran-sura">` +
+                    `{ سورة ${q.suras[s].name} } </span><br>`;
             } else {
-                printw(`--{ سورة ${q.suras[s - 1].name} }--`);
-                print('');
+                return `--{ سورة ${q.suras[s].name} }--\n`;
             }
         }
 
-        function print_bismilah(s) {
+        function get_bismilah(s) {
             if (s != 1 && s != 9) {
-                printw(q.suras[0].ayas[0].text_simple);
+                if (complex) {
+                    return '<span class="quran-bismilah">' +
+                        q.suras[0].ayas[0].text_simple + "</span><br>";
+                } else {
+                    return wrap(q.suras[0].ayas[0].text_simple);
+                }
             }
+            return "";
         }
 
-        function get_header(page, juzu) {
-            if (page) page = "الصفحة " + page;
-            if (juzu) juzu = " - الجزء " + juzu;
-            let res = `${page}${juzu}`;
+        function get_header(page) {
+            let l = loc(q.pages[page - 1]);
+            let a = q.suras[l.sura - 1].ayas[l.aya - 1];
+            let juzu = a.juzu;
+            let sura = q.suras[l.sura - 1].name;
+            let res = `الصفحة ${page} - الجزء ${juzu} - سورة ${sura}`;
             if (complex) {
-                res = `<h5 style="text-align:center">${res}</h5>`;
+                res = `<br><span class="quran-header">${res}</span><br>`;
             } else {
-                res = `\n\n(${res})\n\n`;
+                res = `\n(${res})\n\n`;
             }
             return res;
         }
 
-        function print_sura(s, tafseer) {
-            print_name(s);
-            print_bismilah(s);
-            let tmp = "";
-            let ayas = q.suras[s - 1].ayas;
-            tmp += get_header(ayas[0].page, ayas[0].juzu);
-            for (let i in ayas) {
-                let a = ayas[i];
-                if (i > 0) {
-                    let p = "", j = "";
-                    if (ayas[i - 1].page != a.page) {
-                        p = a.page;
-                        if (ayas[i - 1].juzu != a.juzu) {
-                            j = a.juzu;
-                        }
-                        tmp += get_header(p, j);
-                    }
-                }
-                if (complex) {
-                    tmp += a.text + ` ﴿${ar_num(loc(a.loc).aya)}﴾ `;
-                    if (tafseer) {
-                        tmp += `\n<h5 dir=auto>${q.tafseer[tafseer][a.index]}</h5>\n`;
-                    }
-                } else {
-                    tmp += a.text_simple + ` {${loc(a.loc).aya}} `;
-                    //tmp += a.text + ` {${loc(a.loc).aya}} `;
-                    if (tafseer) {
-                        tmp += `\n> ${q.tafseer[tafseer][a.index]}\n\n`;
-                    }
-                }
-            }
-            if (complex) {
-                print('<div class="justify">');
-                print(tmp);
-                print('</div>');
+        function get_sura_print(sura, tafseer, page) {
+            let res = "";
+            let start_aya = 0, start_sura = 0;
+            if (page) {
+                let this_loc = loc(q.pages[page - 1]);
+                let next_loc = loc(q.pages[page]);
+                start_sura = this_loc.sura - 1;
+                start_aya = this_loc.aya - 1;
             } else {
-                printj(tmp);
+                start_sura = sura - 1;
+                start_aya = 0;
+                // page = q.suras[start_sura].ayas[start_aya].page;
+            }
+            
+            suras_loop: for (let s = start_sura; true; ++s) {
+                if (s >= q.suras.length) {
+                    break;
+                }
+                let ayas = q.suras[s].ayas;
+                let i = s == start_sura ? start_aya : 0;
+                for (; i < ayas.length; ++i) {
+                    let a = ayas[i];
+                    let l = loc(a.loc);
+                    if (page != undefined && a.page != page) {
+                        break suras_loop;
+                    }
+
+                    let prev = get_prev_aya(a);
+                    if (prev == undefined || a.page != prev.page) {
+                        res += get_header(a.page);
+                    }
+                    if (l.aya == 1) {
+                        res += get_name(s) + get_bismilah(s);
+                    }
+                    if (complex) {
+                        res += `<span class="quran-aya" onclick="alert(${a.loc})">` +
+                            `${a.text} ﴿${ar_num(loc(a.loc).aya)}﴾ </span>`;
+                        if (tafseer) {
+                            res += `\n<p><span class="quran-tafseer" dir=auto>` +
+                                `${q.tafseer[tafseer][a.index]}</span></p>\n`;
+                        }
+                    } else {
+                        res += a.text_simple + ` {${loc(a.loc).aya}} `;
+                        //res += a.text + ` {${loc(a.loc).aya}} `;
+                        if (tafseer) {
+                            res += `\n> ${q.tafseer[tafseer][a.index]}\n\n`;
+                        }
+                    }
+                }
+                if (page == undefined) {
+                    break;
+                }
+                res += "\n\n";
+            }
+
+            if (complex) {
+                return `<div class="justify">\n${res}\n</div>`;
+            } else {
+                return just(res).trim();
             }
         }
 
@@ -574,6 +612,7 @@ const quran = (function() {
 
         const opts = getopt({
             "_meta_":       { maxArgs: 1 },
+            "page":         { key: "p", args: 1, description: "Print only one page"          },
             "tafseer":      { key: "t", args: 1, description: "Show tafseer"                 },
             "search":       { key: "s", args: 1, description: "Search Quran"                 },
             "list-suras":   { key: "l",          description: "List sura names"              },
@@ -591,37 +630,45 @@ const quran = (function() {
         if (opts["list-suras"]) {
             let count = 1;
             for (let s of q.suras) {
-                print(`${count++}. ${s.name} - ${s.name_en}`);
+                res_str += `${count++}. ${s.name} - ${s.name_en}\n`;
             }
         } else if (opts["list-tafseer"]) {
             for (let s of Object.keys(q.tafseer)) {
-                print(s);
+                res_str += s + "\n";
             }
         } else if (opts.search) {
             let res = search(opts.search);
-            print(`[${res.length}]`);
-            print('');
+            res_str += `[${res.length}]\n\n`;
             let l;
             for (let aya of res) {
                 l = loc(aya.loc);
-                printw(`${q.suras[l.sura - 1].name} {${l.aya}}:`);
-                printw(aya.text_simple);
-                print('');
+                res_str += wrap(`${q.suras[l.sura - 1].name} {${l.aya}}:`);
+                res_str += wrap(aya.text_simple) + "\n";
             }
-        } else if (opts.tafseer) {
-            if (!q.tafseer[opts.tafseer]) {
-                for (let t of Object.keys(q.tafseer)) {
-                    if (t.includes(opts.tafseer)) {
-                        opts.tafseer = t;
-                        break;
+        } else {
+            let sura, tafseer, page;
+            if (opts.tafseer) {
+                if (!q.tafseer[opts.tafseer]) {
+                    for (let t of Object.keys(q.tafseer)) {
+                        if (t.includes(opts.tafseer)) {
+                            opts.tafseer = t;
+                            break;
+                        }
                     }
                 }
+                tafseer = opts.tafseer;
             }
-            print_sura(get_sura(opts.args[0]), opts.tafseer);
-        } else if (opts.args && opts.args.length != 0) {
-            print_sura(get_sura(opts.args[0]));
-        } else {
-            print_sura(rand(1, q.suras.length));
+            if (opts.page != undefined) {
+                page = opts.page;
+                if (page < 1 || page > q.pages.length) {
+                    throw new Error("Invalid page number");
+                }
+            } else if (opts.args && opts.args.length != 0) {
+                sura = get_sura(opts.args[0]);
+            } else {
+                sura = rand(1, q.suras.length);
+            }
+            res_str += get_sura_print(sura, tafseer, page);
         }
 
         return res_str;
