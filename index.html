@@ -90,6 +90,19 @@
              update_con("-p " + cur_page);
          }
 
+         function zero_pad(input, length) {
+             // https://stackoverflow.com/a/25198989/3825872
+             return (Array(length + 1).join('0') + input).slice(-length);
+         }
+
+         function aya_click(l) {
+             l = zero_pad(l, 6);
+             var url = "https://everyayah.com/data/Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net/" + l + ".mp3";
+             console.log(url);
+             var a = new Audio(url);
+             a.play();
+         }
+
          document.getElementById("q").addEventListener("keyup", function(event) {
              if (event.keyCode === 13) {
                  event.preventDefault();

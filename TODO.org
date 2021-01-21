@@ -1,0 +1,4 @@
+* TODO proper web interface
+* TODO audio everyayah.com
+* TODO fit fixed size page
+* TODO book animations

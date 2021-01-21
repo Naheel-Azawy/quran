@@ -565,7 +565,7 @@ const quran = (function() {
                         res += "* ";
                     }
                     if (complex) {
-                        res += `<span class="quran-aya" onclick="alert(${a.loc})">` +
+                        res += `<span class="quran-aya" onclick="aya_click(${a.loc})">` +
                             `${a.text} ﴿${ar_num(loc(a.loc).aya)}﴾ </span>`;
                         if (tafseer) {
                             res += `\n<p><span class="quran-tafseer" dir=auto>` +
