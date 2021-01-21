@@ -29,6 +29,9 @@
         </div></center>
 
         <script>
+
+         var cur_page = 1;
+
          function set_css(css) {
              switch (css) {
                  case "b":
@@ -66,15 +69,16 @@
                  arg = document.getElementById("q").value;
              }
              if (!arg) arg = "";
+             var page_check = arg.split("-p");
+             if (page_check.length == 2) {
+                 try {
+                     page_check = Number(page_check[1].trim());
+                     cur_page = page_check;
+                 } catch (e) {}
+             }
              document.getElementById("con").innerHTML =
                  quran(arg, true).split("\n").join("<br>");
          }
-
-         update_con(
-             new URL(window.location.href).searchParams.get("q")
-         );
-
-         let cur_page = 1;
 
          function next() {
              ++cur_page;
@@ -85,6 +89,17 @@
              --cur_page;
              update_con("-p " + cur_page);
          }
+
+         document.getElementById("q").addEventListener("keyup", function(event) {
+             if (event.keyCode === 13) {
+                 event.preventDefault();
+                 update_con();
+             }
+         });
+
+         update_con(
+             new URL(window.location.href).searchParams.get("q")
+         );
         </script>
     </body>
 </html>
