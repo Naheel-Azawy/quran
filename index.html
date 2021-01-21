@@ -2,56 +2,7 @@
     <head>
         <meta charset="utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-         @font-face {
-             font-family: 'me_quran';
-             src: URL('fonts/me_quran.ttf') format('truetype');
-             /*src: URL('fonts/KawkabMono-Regular.ttf') format('truetype');*/
-         }
-
-         body, button, select, input, a {
-             color: #ffffff;
-         }
-
-         body, button, select, input {
-             background-color: #000000;
-         }
-
-         hr {
-             display: block;
-             height: 1px;
-             border: 0;
-             border-top: solid white;
-         }
-
-         .justify {
-             text-align: justify;
-             text-justify: inter-word;
-         }
-
-         .quran-header {
-             font-family: me_quran;
-             font-size: small;
-             text-align: center;
-             font-weight: normal;
-         }
-
-         .quran-sura {
-             font-family: me_quran;
-             font-size: xx-large;
-         }
-
-         .quran-bismilah, .quran-aya {
-             font-family: me_quran;
-             font-size: large;
-             font-weight: normal;
-         }
-
-         .quran-tafseer {
-             font-size: normal;
-             font-weight: normal;
-         }
-        </style>
+        <link rel="stylesheet" type="text/css" href="styles.css">
     </head>
     <body>
         <script src="dist/quran.js"></script>
@@ -70,6 +21,10 @@
             <input id="q" type="text"/>
             <button onclick="update_con()">RUN</button>
             <br>
+            <table>
+                <tr><button onclick="prev()">PREV</button></tr>
+                <tr><button onclick="next()">NEXT</button></tr>
+            </table>
             <h3 id="con" dir=rtl></h3>
         </div></center>
 
@@ -118,6 +73,18 @@
          update_con(
              new URL(window.location.href).searchParams.get("q")
          );
+
+         let cur_page = 1;
+
+         function next() {
+             ++cur_page;
+             update_con("-p " + cur_page);
+         }
+
+         function prev() {
+             --cur_page;
+             update_con("-p " + cur_page);
+         }
         </script>
     </body>
 </html>

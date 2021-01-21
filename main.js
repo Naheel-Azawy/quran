@@ -480,18 +480,19 @@ const quran = (function() {
 
         function get_name(s) {
             if (complex) {
-                return `<span class="quran-sura">` +
-                    `{ سورة ${q.suras[s].name} } </span><br>`;
+                return `<div class="quran-sura">` +
+                    `{ سورة ${q.suras[s].name} } </div>`;
             } else {
                 return `--{ سورة ${q.suras[s].name} }--\n`;
             }
         }
 
         function get_bismilah(s) {
+            ++s;
             if (s != 1 && s != 9) {
                 if (complex) {
-                    return '<span class="quran-bismilah">' +
-                        q.suras[0].ayas[0].text_simple + "</span><br>";
+                    return '<div class="quran-bismilah">' +
+                        q.suras[0].ayas[0].text_simple + "</div>";
                 } else {
                     return wrap(q.suras[0].ayas[0].text_simple);
                 }
@@ -511,13 +512,15 @@ const quran = (function() {
                 a = page_or_aya;
             }
             let sura = q.suras[l.sura - 1].name;
-            let res = `الصفحة ${a.page} - الجزء ${a.juzu} - سورة ${sura} ${l.sura}`;
             if (complex) {
-                res = `<br><span class="quran-header">${res}</span><br>`;
+                return '<div class="quran-header">' +
+                    `<span style="float:right">الجزء ${a.juzu}</span>` +
+                    `<span style="float:center">الصفحة ${a.page}</span>` +
+                    `<span style="float:left">سورة ${sura} ${l.sura}</span>` +
+                    '</div>';
             } else {
-                res = `\n(${res})\n\n`;
+                return `\n(الصفحة ${a.page}, الجزء ${a.juzu}, سورة ${sura} ${l.sura})\n\n`;
             }
-            return res;
         }
 
         function get_sura_print(sura, tafseer, page) {
