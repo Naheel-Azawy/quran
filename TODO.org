@@ -2,3 +2,4 @@
 * TODO audio everyayah.com
 * TODO fit fixed size page
 * TODO book animations
+* TODO maybe compress?
