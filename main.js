@@ -36,7 +36,7 @@ const quran = (function() {
             }
         }
         if (!res) {
-            throw new Error(`No sura names '${target}' found`);
+            throw new Error(`No sura named '${target}' was found`);
         } else {
             return res;
         }
@@ -74,6 +74,13 @@ const quran = (function() {
     }
 
     function search(target) {
+        try {
+            // if target is a loc id
+            let l = loc(Number(target));
+            if (l != undefined) {
+                return [loc_aya(l)];
+            }
+        } catch (e) {}
         let list = [];
         if (target.startsWith("و ")) target = "و" + target.substring(2);
         target = target.replace(" و ", "و ")
@@ -492,12 +499,19 @@ const quran = (function() {
             return "";
         }
 
-        function get_header(page) {
-            let l = loc(q.pages[page - 1]);
-            let a = q.suras[l.sura - 1].ayas[l.aya - 1];
-            let juzu = a.juzu;
+        function get_header(page_or_aya) {
+            let l, a;
+            if (typeof page_or_aya == "number") {
+                // we assume its a page
+                l = loc(q.pages[page_or_aya - 1]);
+                a = q.suras[l.sura - 1].ayas[l.aya - 1];
+            } else {
+                // we assume it's an aya object
+                l = loc(page_or_aya.loc);
+                a = page_or_aya;
+            }
             let sura = q.suras[l.sura - 1].name;
-            let res = `الصفحة ${page} - الجزء ${juzu} - سورة ${sura}`;
+            let res = `الصفحة ${a.page} - الجزء ${a.juzu} - سورة ${sura} ${l.sura}`;
             if (complex) {
                 res = `<br><span class="quran-header">${res}</span><br>`;
             } else {
@@ -636,15 +650,6 @@ const quran = (function() {
             for (let s of Object.keys(q.tafseer)) {
                 res_str += s + "\n";
             }
-        } else if (opts.search) {
-            let res = search(opts.search);
-            res_str += `[${res.length}]\n\n`;
-            let l;
-            for (let aya of res) {
-                l = loc(aya.loc);
-                res_str += wrap(`${q.suras[l.sura - 1].name} {${l.aya}}:`);
-                res_str += wrap(aya.text_simple) + "\n";
-            }
         } else {
             let sura, tafseer, page;
             if (opts.tafseer) {
@@ -658,17 +663,32 @@ const quran = (function() {
                 }
                 tafseer = opts.tafseer;
             }
-            if (opts.page != undefined) {
-                page = opts.page;
-                if (page < 1 || page > q.pages.length) {
-                    throw new Error("Invalid page number");
+
+            if (opts.search) {
+                let res = search(opts.search);
+                res_str += `[${res.length}]\n\n`;
+                let l;
+                for (let aya of res) {
+                    l = loc(aya.loc);
+                    res_str += wrap(`${get_header(aya).trim()} {${l.aya}}:`);
+                    res_str += wrap(aya.text_simple) + "\n";
+                    if (tafseer) {
+                        res_str += wrap(`> ${q.tafseer[tafseer][aya.index]}\n\n`);
+                    }
                 }
-            } else if (opts.args && opts.args.length != 0) {
-                sura = get_sura(opts.args[0]);
             } else {
-                sura = rand(1, q.suras.length);
+                if (opts.page != undefined) {
+                    page = opts.page;
+                    if (page < 1 || page > q.pages.length) {
+                        throw new Error("Invalid page number");
+                    }
+                } else if (opts.args && opts.args.length != 0) {
+                    sura = get_sura(opts.args[0]);
+                } else {
+                    sura = rand(1, q.suras.length);
+                }
+                res_str += get_sura_print(sura, tafseer, page);
             }
-            res_str += get_sura_print(sura, tafseer, page);
         }
 
         return res_str;
@@ -677,7 +697,11 @@ const quran = (function() {
 })();
 
 if (typeof(process) != 'undefined') {
-    console.log(quran(process.argv));
+    try {
+        console.log(quran(process.argv));
+    } catch (e) {
+        console.error(e.toString());
+    }
 }
 
 /*
