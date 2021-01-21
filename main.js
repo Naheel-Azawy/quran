@@ -511,15 +511,17 @@ const quran = (function() {
                 l = loc(page_or_aya.loc);
                 a = page_or_aya;
             }
+            let page = a.page;
             let sura = q.suras[l.sura - 1].name;
+            let juzu = a.juzu;
             if (complex) {
                 return '<div class="quran-header">' +
-                    `<span style="float:right">الجزء ${a.juzu}</span>` +
-                    `<span style="float:center">الصفحة ${a.page}</span>` +
+                    `<span style="float:right">الجزء ${juzu}</span>` +
+                    `<span style="float:center">الصفحة ${page}</span>` +
                     `<span style="float:left">سورة ${sura} ${l.sura}</span>` +
                     '</div>';
             } else {
-                return `\n(الصفحة ${a.page}, الجزء ${a.juzu}, سورة ${sura} ${l.sura})\n\n`;
+                return `\n(الصفحة ${page}, الجزء ${juzu}, سورة ${sura} ${l.sura})\n\n`;
             }
         }
 
@@ -556,6 +558,11 @@ const quran = (function() {
                     }
                     if (l.aya == 1) {
                         res += get_name(s) + get_bismilah(s);
+                    }
+                    if (prev != undefined &&
+                        l.aya != 1 &&
+                        a.juzu != prev.juzu) {
+                        res += "* ";
                     }
                     if (complex) {
                         res += `<span class="quran-aya" onclick="alert(${a.loc})">` +
