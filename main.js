@@ -83,8 +83,8 @@ const quran = (function() {
         } catch (e) {}
         let list = [];
         if (target.startsWith("و ")) target = "و" + target.substring(2);
-        target = target.replace(" و ", "و ")
-            .replace("ة", "ه")
+        target = target.replaceAll(" و ", "و ")
+            .replaceAll("ة", "ه")
             .replace(/\s+/g, ' ').trim();
         if (target.length != 0) {
             let sp = target.split(' ');
@@ -419,21 +419,6 @@ const quran = (function() {
     }
 
     function quran(args, complex) {
-        let res_str = "";
-
-        function test_search() {
-            let arr = [
-                "انه من سليمان",
-                "16 1",
-                "page 20",
-                "juzu 30",
-                "الكهف"
-            ];
-
-            for (let t of arr) {
-                res_str += `SEARCHING FOR '${t}'\n${search(t)}\n`;
-            }
-        }
 
         let default_tcols = typeof(process) != 'undefined' ?
             process.stdout.columns : -1;
@@ -500,7 +485,7 @@ const quran = (function() {
             return "";
         }
 
-        function get_header(page_or_aya) {
+        function get_header(page_or_aya, simple=false) {
             let l, a;
             if (typeof page_or_aya == "number") {
                 // we assume its a page
@@ -514,7 +499,7 @@ const quran = (function() {
             let page = a.page;
             let sura = q.suras[l.sura - 1].name;
             let juzu = a.juzu;
-            if (complex) {
+            if (complex && !simple) {
                 return '<div class="quran-header">' +
                     `<span style="float:right">الجزء ${juzu}</span>` +
                     `<span style="float:center">الصفحة ${page}</span>` +
@@ -536,7 +521,6 @@ const quran = (function() {
             } else {
                 start_sura = sura - 1;
                 start_aya = 0;
-                // page = q.suras[start_sura].ayas[start_aya].page;
             }
             
             suras_loop: for (let s = start_sura; true; ++s) {
@@ -573,7 +557,6 @@ const quran = (function() {
                         }
                     } else {
                         res += a.text_simple + ` {${loc(a.loc).aya}} `;
-                        //res += a.text + ` {${loc(a.loc).aya}} `;
                         if (tafseer) {
                             res += `\n> ${q.tafseer[tafseer][a.index]}\n\n`;
                         }
@@ -639,6 +622,7 @@ const quran = (function() {
             "page":         { key: "p", args: 1, description: "Print only one page"          },
             "tafseer":      { key: "t", args: 1, description: "Show tafseer"                 },
             "search":       { key: "s", args: 1, description: "Search Quran"                 },
+            "json":         { key: "j", args: 1, description: "Access Quran JSON directly"   },
             "list-suras":   { key: "l",          description: "List sura names"              },
             "list-tafseer": { key: "b",          description: "List available tafseer books" },
             "width":        { key: "w", args: 1, description: "Terminal width"               },
@@ -652,13 +636,36 @@ const quran = (function() {
         }
 
         if (opts["list-suras"]) {
-            let count = 1;
-            for (let s of q.suras) {
-                res_str += `${count++}. ${s.name} - ${s.name_en}\n`;
+            let res = [];
+            for (let i in q.suras) {
+                if (complex) {
+                    res.push(`<li>${q.suras[i].name} - ${q.suras[i].name_en}</li>`);
+                } else {
+                    res.push(`${i + 1}. ${q.suras[i].name} - ${q.suras[i].name_en}`);
+                }
             }
+            res = res.join("\n");
+            if (complex) {
+                res = `<ol>\n${res}\n</ol>`;
+            }
+            return res;
         } else if (opts["list-tafseer"]) {
-            for (let s of Object.keys(q.tafseer)) {
-                res_str += s + "\n";
+            if (complex) {
+                let res = [];
+                for (let t of Object.keys(q.tafseer)) {
+                    res.push(`<li>${t}</li>`);
+                }
+                res = res.join("\n");
+                res = `<ul>\n${res}\n</ul>`;
+                return res;
+            } else {
+                return Object.keys(q.tafseer).join("\n");
+            }
+        } else if (opts.json != undefined) {
+            if (opts.json == ".") {
+                return q;
+            } else {
+                return eval(`q${opts.json}`);
             }
         } else {
             let sura, tafseer, page;
@@ -676,16 +683,35 @@ const quran = (function() {
 
             if (opts.search) {
                 let res = search(opts.search);
-                res_str += `[${res.length}]\n\n`;
+                let res_str = `[${res.length}]\n\n`;
+                if (complex) {
+                    res_str += "<ol>\n";
+                }
                 let l;
                 for (let aya of res) {
                     l = loc(aya.loc);
-                    res_str += wrap(`${get_header(aya).trim()} {${l.aya}}:`);
-                    res_str += wrap(aya.text_simple) + "\n";
-                    if (tafseer) {
-                        res_str += wrap(`> ${q.tafseer[tafseer][aya.index]}\n\n`);
+                    if (complex) {
+                        res_str += "<li>";
+                        res_str += `${get_header(aya, true).trim()} {${l.aya}}:`;
+                        res_str += `<p><span class="quran-aya">${aya.text_simple}` +
+                            "</span></p>";
+                        if (tafseer) {
+                            res_str += '<p><span class="quran-tafseer">' +
+                                `${q.tafseer[tafseer][aya.index]}</span></p>`;
+                        }
+                        res_str += "</li>";
+                    } else {
+                        res_str += wrap(`${get_header(aya).trim()} {${l.aya}}:`);
+                        res_str += wrap(aya.text_simple) + "\n";
+                        if (tafseer) {
+                            res_str += wrap(`> ${q.tafseer[tafseer][aya.index]}\n\n`);
+                        }
                     }
                 }
+                if (complex) {
+                    res_str += "</ol>";
+                }
+                return res_str;
             } else {
                 if (opts.page != undefined) {
                     page = opts.page;
@@ -697,18 +723,20 @@ const quran = (function() {
                 } else {
                     sura = rand(1, q.suras.length);
                 }
-                res_str += get_sura_print(sura, tafseer, page);
+                return get_sura_print(sura, tafseer, page);
             }
         }
-
-        return res_str;
     }
     return quran;
 })();
 
 if (typeof(process) != 'undefined') {
     try {
-        console.log(quran(process.argv));
+        let res = quran(process.argv);
+        if (typeof res == "object") {
+            res = JSON.stringify(res, null, 4);
+        }
+        console.log(res);
     } catch (e) {
         console.error(e.toString());
     }

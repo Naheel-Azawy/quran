@@ -37,6 +37,7 @@ hr {
     font-family: me_quran;
     font-size: large;
     text-align: center;
+    border-bottom: 1px solid;
 }
 
 .quran-bismilah {

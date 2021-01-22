@@ -6,7 +6,7 @@
     </head>
     <body>
 
-        <center><div style="max-width:500px;padding:10px">
+        <div style="max-width:500px;padding:10px;margin:0 auto;">
             <a href="https://github.com/Naheel-Azawy/quran">
                 UNDER DEVELOPMENT - SRC
             </a>
@@ -24,8 +24,8 @@
                 <tr><button onclick="prev()">PREV</button></tr>
                 <tr><button onclick="next()">NEXT</button></tr>
             </table>
-            <h3 id="con" dir=rtl></h3>
-        </div></center>
+            <div id="con" dir=rtl></div>
+        </div>
 
         <script src="dist/quran-compressed.js"></script>
         <script>
@@ -76,8 +76,12 @@
                      cur_page = page_check;
                  } catch (e) {}
              }
-             document.getElementById("con").innerHTML =
-                 quran(arg, true).split("\n").join("<br>");
+             var res = quran(arg, true);
+             if (typeof res == "object") {
+                 res = JSON.stringify(res, null, 4)
+                           .replaceAll("\n", "<br>");
+             }
+             document.getElementById("con").innerHTML = res;
          }
 
          function next() {
