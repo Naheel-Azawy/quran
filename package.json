@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/Naheel-Azawy/quran#readme",
   "dependencies": {
-    "esbuild": "^0.6.16"
+    "esbuild": "^0.6.16",
+    "lz-string": "^1.4.4"
   }
 }

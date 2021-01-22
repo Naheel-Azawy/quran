@@ -2,4 +2,5 @@
 * TODO audio everyayah.com
 * TODO fit fixed size page
 * TODO book animations
-* TODO maybe compress?
+* DONE maybe compress?
+  CLOSED: [2021-01-22 Fri 03:17]

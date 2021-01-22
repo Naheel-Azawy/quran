@@ -1,26 +1,57 @@
 #!/bin/sh
 
-#USE_ESBUILD=1
-USE_ESBUILD=
+min() {
+    [ -d ./node_modules/esbuild ] ||
+        npm i esbuild
+    ./node_modules/esbuild/bin/esbuild \
+        --bundle ./dist/"$1".js \
+        --outfile=./dist/"$1".min.js \
+        --minify-whitespace \
+        --minify-syntax \
+        --platform=node
+    mv ./dist/"$1".min.js ./dist/"$1".js
+}
 
-mkdir -p dist
-{
-    echo 'const QURAN = '
-    cat quran.json
-    echo ';'
-    cat main.js
-} > ./dist/quran.js
+build_normal() {
+    {
+        echo 'const QURAN = '
+        cat quran.json
+        echo ';'
+        cat main.js
+    } > ./dist/quran.js
+    min quran
+}
 
-if [ "$1" != '-q' ]; then
-    if [ "$USE_ESBUILD" ] && [ -f ./node_modules/esbuild/bin/esbuild ]; then
-        ./node_modules/esbuild/bin/esbuild --bundle ./dist/quran.js --outfile=./dist/min.js --minify --platform=node
-        mv ./dist/min.js ./dist/quran.js
+build_compressed() {
+    [ -d ./node_modules/lz-string ] ||
+        npm i lz-string
+
+    node -e '
+const fs = require("fs");
+const lz = require("lz-string");
+let s = fs.readFileSync("./quran.json").toString();
+let z = lz.compressToBase64(s);
+fs.writeFileSync("./dist/quran.lz", z);'
+
+    {
+        cat ./node_modules/lz-string/libs/lz-string.min.js
+        printf 'const QURAN = JSON.parse(LZString.decompressFromBase64("'
+        cat ./dist/quran.lz
+        echo '"));'
+        cat main.js
+    } > ./dist/quran-compressed.js
+
+    min quran-compressed
+    rm -f ./dist/quran.lz
+}
+
+main() {
+    mkdir -p dist
+    if [ "$1" = -c ]; then
+        build_compressed
     else
-        command -v tsc >/dev/null &&
-            command -v uglifyjs >/dev/null &&
-            tsc ./dist/quran.js --allowJs --target es5 -outFile ./dist/es5.js &&
-            uglifyjs ./dist/es5.js > ./dist/min.js &&
-            mv ./dist/min.js ./dist/quran.js &&
-            rm ./dist/es5.js
+        build_normal
     fi
-fi
+}
+
+main "$@"
