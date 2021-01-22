@@ -1,5 +1,6 @@
-./dist/quran.js: main.js launcher.sh quran.json build.sh
+./dist/quran.js: main.js quran.json build.sh
 	./build.sh
+	./build.sh -c
 
 install: ./dist/quran.js
 	cat launcher.sh ./dist/quran.js > ./dist/quran
