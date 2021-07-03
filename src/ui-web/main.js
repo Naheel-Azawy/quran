@@ -91,7 +91,7 @@ function isPage(num) {
 
 function updateCon(arg, check) {
     if (arg == undefined) {
-        arg = getConf("arg");
+        arg = $get("#q").value;
     }
     arg = replaceArDigits(arg);
     if (!arg) arg = "";
