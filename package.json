@@ -1,27 +1,44 @@
 {
-  "name": "quran",
-  "version": "1.0.0",
-  "description": "",
-  "main": "main.js",
-  "scripts": {
-    "start": "node main.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Naheel-Azawy/quran.git"
-  },
-  "keywords": [
-    "quran"
-  ],
-  "author": "Naheel-Azawy",
-  "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://github.com/Naheel-Azawy/quran/issues"
-  },
-  "homepage": "https://github.com/Naheel-Azawy/quran#readme",
-  "dependencies": {
-    "esbuild": "^0.6.34",
-    "lz-string": "^1.4.4"
-  }
+    "name": "quran",
+    "version": "1.0.0",
+    "description": "",
+    "main": "main.js",
+    "scripts": {
+        "json": "node src/json-gen.js",
+        "build": "webpack",
+        "build:prod": "webpack --env production",
+        "watch": "webpack -w",
+        "test": "mocha dist/test.bundle.js",
+        "start": "http-server -p 9090 dist",
+        "start-cli": "node -r source-map-support/register ./dist/cli.bundle.js",
+        "start-cli-sh": "sh ./dist/cli.bundle.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Naheel-Azawy/quran.git"
+    },
+    "keywords": [
+        "quran"
+    ],
+    "author": "Naheel-Azawy",
+    "license": "GPL-3.0",
+    "bugs": {
+        "url": "https://github.com/Naheel-Azawy/quran/issues"
+    },
+    "homepage": "https://github.com/Naheel-Azawy/quran#readme",
+    "devDependencies": {
+        "compress-json": "*",
+        "css-loader": "*",
+        "elemobj": "*",
+        "html-webpack-plugin": "*",
+        "http-server": "*",
+        "style-loader": "*",
+        "url-loader": "*",
+        "wait-for-element-transition": "*",
+        "webpack": "*",
+        "webpack-bundle-analyzer": "*",
+        "webpack-cli": "*",
+        "webpack-pwa-manifest": "*",
+        "xml2json": "*"
+    }
 }

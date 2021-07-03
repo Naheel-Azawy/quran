@@ -1,17 +1,20 @@
-./dist/quran.js: main.js quran.json build.sh
-	./build.sh
-	./build.sh -c
+all: node_modules dist
 
-install: ./dist/quran.js
-	cat launcher.sh ./dist/quran.js > ./dist/quran
-	chmod +x ./dist/quran
-	mv ./dist/quran /bin/ || mv ./dist/quran /usr/local/bin/
+dist:
+	npm run build
+
+node_modules:
+	npm install
+
+install:
+	cp ./dist/cli.bundle.js /usr/bin/quran
+	chmod +x /usr/bin/quran
 
 uninstall:
 	rm -f /bin/quran
-	rm -f /usr/local/bin/quran
+	rm -f /usr/bin/quran
 
 clean:
-	rm -rf dist
+	rm -rf dist node_modules package-lock.json
 
 .PHONY: install uninstall clean

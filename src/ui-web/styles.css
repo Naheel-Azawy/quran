@@ -1,0 +1,278 @@
+:root {
+    --primary-background: #000000;
+    --primary-foreground: #ffffff;
+    --base-background:    #222222;
+    --base-foreground:    #ffffff;
+    --active-background:  #444444;
+    --active-foreground:  #ffffff;
+}
+
+.white {
+    --primary-background: #ffffff;
+    --primary-foreground: #000000;
+    --base-background:    #d0d0d0;
+    --base-foreground:    #000000;
+    --active-background:  #a0a0a0;
+    --active-foreground:  #000000;
+}
+
+.yellow {
+    --primary-background: #fbfb95;
+    --primary-foreground: #222222;
+    --base-background:    #7a5137;
+    --base-foreground:    #ffffff;
+    --active-background:  #7a5137;
+    --active-foreground:  #ffffff;
+}
+
+:root {
+    --radius:          3px;
+    --slide-time:      100ms;
+    --highlight:       #55555577;
+    --quran-font-size: 17px;
+}
+
+body {
+    margin:     0px;
+    overflow-x: hidden;
+}
+
+@font-face {
+    font-family: 'me_quran';
+    src: URL('../../fonts/me_quran.ttf') format('truetype');
+}
+
+body, button, select, input, textarea {
+    background-color: var(--primary-background);
+    color:            var(--primary-foreground);
+    transition:       300ms;
+}
+
+input, button, select {
+    height: auto;
+}
+
+button, select {
+    background:    var(--base-background);
+    color:         var(--base-foreground);
+    border-radius: var(--radius);
+    border:        0px;
+    padding:       0.5em;
+    margin-right:  2px;
+    margin-left:   2px;
+    margin-top:    4px;
+    margin-bottom: 4px;
+    outline:       none;
+    user-select:   none;
+    min-height:    0px;
+    transition:    300ms;
+    overflow:      hidden;
+    box-shadow:    0px 1px #00000022;
+    cursor:        pointer;
+    text-align:    center;
+}
+
+input {
+    border-radius: var(--radius);
+    border:        1px solid gray;
+    padding:       0.3em;
+    margin-right:  2px;
+    margin-left:   2px;
+    margin-top:    4px;
+    margin-bottom: 4px;
+}
+
+button:active, select:active, input:focus {
+    background: var(--active-background);
+    color:      var(--active-foreground);
+}
+
+hr {
+    display:    block;
+    height:     1px;
+    border:     0;
+    border-top: solid gray;
+}
+
+.justify {
+    text-align:   justify;
+    text-justify: inter-word;
+}
+
+.quran-container {
+    direction: rtl;
+}
+
+.quran-page-content {
+    line-height:     40px;
+    direction:       rtl;
+    text-align:      justify;
+    text-align-last: center;
+}
+
+.quran-content-center {
+    text-align:      center;
+    text-align-last: center;
+}
+
+.quran-header {
+    font-family:   me_quran;
+    font-size:     small;
+    text-align:    center;
+    font-weight:   normal;
+    margin-top:    10px;
+    margin-bottom: 10px;
+}
+
+.quran-sura {
+    width:           100%;
+    display:         block;
+    font-family:     me_quran;
+    font-size:       var(--quran-font-size);
+    text-align:      center;
+    text-align-last: center;
+    border-top:      1px solid;
+    border-bottom:   1px solid;
+}
+
+.quran-bismilah {
+    width:           100%;
+    display:         block;
+    font-family:     me_quran;
+    font-size:       var(--quran-font-size);
+    font-weight:     normal;
+    text-align:      center;
+    text-align-last: center;
+}
+
+.quran-aya {
+    font-family: me_quran;
+    font-size:   var(--quran-font-size);
+    font-weight: normal;
+}
+
+.quran-page .quran-aya {
+    cursor:     pointer;
+    transition: none;
+}
+
+.quran-page .quran-aya:hover {
+    background: var(--highlight);
+}
+
+.search-item {
+    cursor: pointer;
+}
+
+.quran-tafseer {
+    font-size:   normal;
+    font-weight: normal;
+}
+
+.quran-list-item {
+    width:         100%;
+    display:       block;
+    font-family:   me_quran;
+    font-size:     var(--quran-font-size);
+    text-align:    center;
+    border-bottom: 1px solid;
+    cursor:        pointer;
+}
+
+.quran-list-item:hover {
+    background: var(--highlight);
+}
+
+.highlighted {
+    background: var(--highlight);
+}
+
+.theme-btn {
+    width:         30px;
+    height:        30px;
+    border:        2px solid gray;
+    border-radius: 50%;
+    background:    var(--black);
+}
+
+.modal {
+    display:          none;  /* Hidden by default */
+    position:         fixed; /* Stay in place */
+    z-index:          10;    /* Sit on top */
+    padding-top:      100px; /* Location of the box */
+    left:             0;
+    top:              0;
+    width:            100%; /* Full width */
+    height:           100%; /* Full height */
+    overflow:         auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+    margin:           auto;
+    padding:          20px;
+    border:           1px solid gray;
+    border-radius:    var(--radius);
+    max-width:        500px;
+    max-height:       90%;
+    background-color: var(--primary-background);
+    position:         relative;
+    animation:        modal-anim 150ms;
+}
+
+@keyframes modal-anim {
+    from { bottom: -300px; opacity: 0; }
+    to   { bottom: 0;      opacity: 1; }
+}
+
+.animate-left-in {
+    position:  relative;
+    animation: animateleftin var(--slide-time) forwards;
+}
+
+@keyframes animateleftin {
+    from { left: -300px; opacity: 0; display: none;  }
+    to   { left: 0;      opacity: 1; display: block; }
+}
+
+.animate-right-in {
+    position:  relative;
+    animation: animaterightin var(--slide-time) forwards;
+}
+
+@keyframes animaterightin {
+    from { right: -300px; opacity: 0; display: none;  }
+    to   { right: 0;      opacity: 1; display: block; }
+}
+
+.animate-left-out {
+    position:  relative;
+    animation: animateleftout var(--slide-time) forwards;
+}
+
+@keyframes animateleftout {
+    from { left: 0;      opacity: 1; display: block; }
+    to   { left: -300px; opacity: 0; display: none;  }
+}
+
+.animate-right-out {
+    position:  relative;
+    animation: animaterightout var(--slide-time) forwards;
+}
+
+@keyframes animaterightout {
+    from { right: 0;      opacity: 1; display: block; }
+    to   { right: -300px; opacity: 0; display: none;  }
+}
+
+#main {
+    max-width: 400px;
+    padding:   10px;
+    margin:    0 auto;
+}
+
+/* Hide the annoying highlight on android */
+input, textarea, button, select, a, div {
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+    outline: none !important;
+}

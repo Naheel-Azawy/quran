@@ -1,0 +1,17 @@
+{
+    "ar.muyassar": {
+        "lang": "Arabic",
+        "name": "تفسير المیسر",
+        "link": "tafseer/ar.muyassar"
+    },
+    "ar.ierab": {
+        "lang": "Arabic",
+        "name": "إعراب القرآن",
+        "link": "tafseer/ar.ierab"
+    },
+    "en.sahih": {
+        "lang": "English",
+        "name": "Saheeh International",
+        "link": "tafseer/en.sahih"
+    }
+}

@@ -2,5 +2,6 @@
 * TODO audio everyayah.com
 * TODO fit fixed size page
 * TODO book animations
-* DONE maybe compress?
-  CLOSED: [2021-01-22 Fri 03:17]
+* CNCL maybe compress?
+  CLOSED: [2021-06-14 Mon 11:24]
+  why compress when you can gzip from server

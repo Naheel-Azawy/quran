@@ -1,0 +1,36 @@
+{
+    "tanzil_copyright": "",
+    "suras": [
+        {
+            "index": 0,
+            "ayas": [
+                {
+                    "index": 0,
+                    "page": 0,
+                    "loc": 0,
+                    "juzu": 0,
+                    "text": "",
+                    "text_clean": ""
+                }
+            ],
+            "start": 0,
+            "name_ar": "",
+            "name_en": "",
+            "name_tr": "",
+            "type": "meccan|medinan",
+            "order": 0,
+            "rukus": 0
+        }
+    ],
+    "juzus": [ 0 ],
+    "hizbs": [ 0 ],
+    "manzils": [ 0 ],
+    "rukus": [ 0 ],
+    "pages": [ 0 ],
+    "sajdas": [ 0 ],
+    "sajdas_types": [ "obligatory|recommended" ],
+    "tafseer": {
+        "ar": [ "" ],
+        "en": [ "" ]
+    }
+}

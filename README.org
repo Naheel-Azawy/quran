@@ -1,6 +1,5 @@
 * Quran
-  A simple CLI Quran written in JavaScript.
-  Web interface is a TODO.
+  A simple Web/CLI Quran written in JavaScript.
 
 ** Install
    #+begin_src shell
@@ -25,4 +24,4 @@
    node and fribidi.
 
 ** License
-   GPL
+   GPL-3
