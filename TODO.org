@@ -1,3 +1,4 @@
+
 * PROG proper web interface
 * TODO audio everyayah.com
 * TODO fit fixed size page
@@ -14,3 +15,11 @@
   - [ ] color selected aya
   - [ ] show tafseer options on aya click
   - [ ] add search icon
+* check what pages need -ve word spacing
+  - if not too many, manage by hand
+  - check when the sura name is on the previous page
+* add tatweel instead of word spacing in web ui
+* seperate core and reduce json
+  remove all details for each aya and compute them when needed
+  - [ ] remove simple text
+    build an algo to generate simple out of complex. maybe check tanzil
