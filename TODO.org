@@ -1,7 +1,16 @@
-* TODO proper web interface
+* PROG proper web interface
 * TODO audio everyayah.com
 * TODO fit fixed size page
 * TODO book animations
 * CNCL maybe compress?
   CLOSED: [2021-06-14 Mon 11:24]
   why compress when you can gzip from server
+* UI/UX
+  - [ ] text is too small for large tablet screen
+  - [ ] handle back button on android
+  - [ ] tell the user how to show tafseer
+  - [ ] replace laggy page animations movement with some kind of scrolling
+  - [ ] tafseer drop down remove selected item
+  - [ ] color selected aya
+  - [ ] show tafseer options on aya click
+  - [ ] add search icon
