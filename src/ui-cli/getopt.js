@@ -6,7 +6,9 @@ export function getopt(opts, args) {
     }
 
     let bin = "quran";
-    if (typeof(process) != 'undefined' && args[0].includes("node")) {
+    if (typeof Deno != "undefined") {
+        args = Deno.args;
+    } else if (typeof(process) != 'undefined' && args[0].includes("node")) {
         bin = args[1];
         bin = bin.substring(bin.lastIndexOf("/") + 1);
         args = args.slice(2);
@@ -28,10 +30,18 @@ export function getopt(opts, args) {
         console.log("      --help      \tDisplay this help and exit");
     };
 
-    let err = function(msg) {
+    const exit = function(code) {
+        if (typeof Deno != "undefined") {
+            Deno.exit(code);
+        } else {
+            process.exit(code);
+        }
+    };
+
+    const err = function(msg) {
         console.log(msg);
         res.printHelp();
-        process.exit(1);
+        exit(1);
         return {};
     };
 
@@ -60,7 +70,7 @@ export function getopt(opts, args) {
             if (o == "help") {
                 res.printHelp();
                 args[i] = undefined;
-                process.exit(0);
+                exit(0);
             } else if (o in opts) {
                 if (opts[o].args == 1) {
                     if (i + 1 < args.length) {

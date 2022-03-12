@@ -5,7 +5,7 @@ export const q = decompress(QURAN_JSON);
 export const tafseerList = TAFSEER;
 
 export let props = {
-    complex: typeof window  != "undefined",
+    complex: typeof document  != "undefined",
     defaultTcols: typeof process != "undefined" ?
         process.stdout.columns : -1,
     tafseer: undefined

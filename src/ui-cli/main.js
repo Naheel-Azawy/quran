@@ -109,7 +109,13 @@ function run(args) {
 
 function main() {
     try {
-        let res = run(process.argv);
+        let argv;
+        if (typeof Deno != "undefined") {
+            argv = Deno.args;
+        } else {
+            argv = process.argv;
+        }
+        let res = run(argv);
         if (typeof res == "object") {
             res = JSON.stringify(res, null, 4);
         }
