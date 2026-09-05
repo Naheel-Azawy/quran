@@ -11,12 +11,14 @@ FLAGS_COMMON = -O3
 #FLAGS_COMMON = -g
 #FLAGS_COMMON += -fbounds-check
 FLAGS = -Wall $(FLAGS_COMMON)
-EMCC_FLAGS = -Wall $(FLAGS_COMMON) -DUNDER_WASM -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS="['_swprint_page', '_quran_read', '_quran_read_wchar', '_quran_search_locs', '_malloc', '_free', '_setlocale']" -s EXPORTED_RUNTIME_METHODS=[] --no-entry
+EMCC_FLAGS = -Wall $(FLAGS_COMMON) -DUNDER_WASM -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS="['_swprint_page', '_quran_read', '_quran_read_wchar', '_quran_search_locs', '_malloc', '_free', '_quran_printer_init']" -s EXPORTED_RUNTIME_METHODS=[] --no-entry
 
 # DATA ################################################
 
 node_modules/xml2json:
 	npm i xml2json
+	npm install-scripts approve node-expat
+	npm rebuild node-expat
 
 build/quran.json: data/gen-json.js data/quran-uthmani.txt \
 		data/quran-simple-clean.txt data/quran-data.xml node_modules/xml2json

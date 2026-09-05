@@ -3,6 +3,8 @@
 
 #include "quran_core.h"
 
+void   quran_printer_init(void);
+
 size_t swprint_page(wchar_t *buf, int page, bool simple, bool just);
 size_t fwprint_page(FILE *f, int page, bool simple, bool just);
 

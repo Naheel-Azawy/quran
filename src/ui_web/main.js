@@ -7,12 +7,14 @@ async function main() {
 
     const {
         memory, malloc, free,
-        setlocale,
+        quran_printer_init,
         swprint_page, quran_read, quran_read_wchar, quran_search_locs
     } = await loadWasm("quran.wasm");
 
     function init() {
-        setlocale(LC_ALL, "en_US.UTF-8");
+        // a JS string passed to an i32 param arrives as 0, so calling
+        // setlocale from here only ever queried the locale
+        quran_printer_init();
     }
 
     function get_page(page, simple=false) {
@@ -60,7 +62,10 @@ async function main() {
         matches = quran_search_locs(ptr, target_ptr, simple);
         console.log(matches);
 
-        mem = new Uint16Array(memory.buffer, ptr * SIZEOF_QURAN_LOC_T, matches);
+        // byteOffset is the pointer itself, not the pointer scaled by the
+        // element size -- this is why arr came back all zeros
+        mem = new Uint16Array(memory.buffer, ptr, matches);
+
         let arr = Array.from(mem);
         // arr is all zeros, not sure why, maybe in c maybe in js TODO: fix
         //arr = arr.map(loc => locDecode(loc));

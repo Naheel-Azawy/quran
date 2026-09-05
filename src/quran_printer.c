@@ -18,6 +18,11 @@
 // TODO: use quran_chr_t instead of wchar_t
 // TODO: strict size checks
 
+// Share of the extra line width filled with tatweel, the rest goes to spaces
+#define TATWEEL_RATIO .8
+// Max number of tatweel that can be stacked at a single spot
+#define TATWEEL_MAX_REPEAT 3
+
 static bool has_break_at(int page, int w_count) {
     for (int l = 0; l < 15; ++l) {
         if (quran.breaks[page][l] &&
@@ -26,6 +31,13 @@ static bool has_break_at(int page, int w_count) {
         }
     }
     return false;
+}
+
+void quran_printer_init(void) {
+    // Wide output fails in the C locale: musl's wcrtomb rejects any wchar
+    // above 0x7F when MB_CUR_MAX is 1, so every swprintf holding Arabic
+    // returns -1. The JS side cannot pass a string, so set it here.
+    setlocale(LC_ALL, "C.UTF-8");
 }
 
 static bool is_printable(wchar_t c) {
@@ -87,17 +99,28 @@ static size_t center_swprintf(int width, wchar_t *buf, size_t size,
 }
 
 static bool can_add_tatweel(wchar_t c, wchar_t *next_ptr) {
-    return false; // TODO: bring tatweel back once improved
     if (next_ptr != NULL) {
         // false if at the end of the word
         if (*next_ptr == L'\0' || *next_ptr == L' ') return false;
         while (*next_ptr && quran_is_tashkeel(*next_ptr)) ++next_ptr;
         if (*next_ptr == L'\0' || *next_ptr == L' ') return false;
+        // Hamza never joins to the letter before it
+        if (*next_ptr == L'ء') return false;
+        if (c == L'ل') {
+            // Keep the لا ligature, it is counted as one char
+            switch (*next_ptr) {
+            case L'ا':
+            case L'أ':
+            case L'إ':
+            case L'آ':
+                return false;
+            }
+        }
     }
     // Not after: ا د ذ ر ز و ء
     // Not before: ء
-    static const wchar_t allowed[] = L"جحخهعغفقثصضطكمنتبيسشظئ";
-    for (size_t i = 0; i < sizeof(allowed) / sizeof(allowed[0]); ++i) {
+    static const wchar_t allowed[] = L"جحخهعغفقثصضطكلمنتبيسشظئ";
+    for (size_t i = 0; allowed[i]; ++i) {
         if (c == allowed[i]) {
             return true;
         }
@@ -109,6 +132,10 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
                            int target_width, bool nest, float percent) {
     size_t len = wcslen(line);
 
+    // Never pad past the buffers, whatever width the caller asks for
+    if (target_width < 1) target_width = 1;
+    if (target_width > QURAN_LINE_MAX_WIDTH) target_width = QURAN_LINE_MAX_WIDTH;
+
     // Skip if the line starts with a space (probably centered)
     if (line[0] == L' ') {
         wcscpy(out, line);
@@ -118,6 +145,7 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
     // Count words and printable characters
     int word_count    = 0;
     int char_count    = 0;
+    int tatweel_slots = 0;
     int tatweel_count = 0;
     int in_word       = 0;
 
@@ -147,7 +175,7 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
             }
 
             if (can_add_tatweel(line[i], &line[i + 1])) {
-                ++tatweel_count;
+                ++tatweel_slots;
             }
         } else {
             in_word = 0;
@@ -186,15 +214,17 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
 
     int spaces_needed = target_width - char_count;
     int gaps = word_count - 1;
-    if (spaces_needed - tatweel_count > gaps) {
-        spaces_needed -= tatweel_count;
-        // TODO: 50/50 distribution between spaces and tatweel
-    } else {
-        tatweel_count = 0;
-        if (spaces_needed < gaps) {
-            // No space, at least one space after every word
-            spaces_needed = gaps;
+    if (tatweel_slots > 0 && spaces_needed > gaps) {
+        // Distribute the extra width between tatweel and spaces, one space
+        // per gap is always kept out of the split
+        tatweel_count = (int) ((spaces_needed - gaps) * TATWEEL_RATIO);
+        if (tatweel_count > tatweel_slots * TATWEEL_MAX_REPEAT) {
+            tatweel_count = tatweel_slots * TATWEEL_MAX_REPEAT;
         }
+        spaces_needed -= tatweel_count;
+    } else if (spaces_needed < gaps) {
+        // No space, at least one space after every word
+        spaces_needed = gaps;
     }
     int space_per_gap = spaces_needed / gaps;
     int extra_spaces  = spaces_needed % gaps;
@@ -206,7 +236,8 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
     wchar_t *dst = result;
     wchar_t *ptr = line;
     in_word = 0;
-    int gap_index = 0;
+    int gap_index     = 0;
+    int tatweel_index = 0;
     static const wchar_t tatweel = L'ـ';
 
     while (*ptr) {
@@ -215,10 +246,19 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
             *dst++ = *ptr++;
             if (tatweel_count > 0 &&
                 can_add_tatweel(*(ptr - 1), ptr)) {
-                *dst++ = tatweel;
-                --tatweel_count;
-                // TODO: this will add tatweel at the beginning only,
-                //       distribute better
+                // Copy the tashkeel first, so it stays on the letter
+                // and not on the tatweel
+                while (*ptr && quran_is_tashkeel(*ptr)) {
+                    *dst++ = *ptr++;
+                }
+                // Spread the tatweels evenly over the possible slots
+                int num_tatweel =
+                    (tatweel_index + 1) * tatweel_count / tatweel_slots -
+                    tatweel_index * tatweel_count / tatweel_slots;
+                for (int i = 0; i < num_tatweel; i++) {
+                    *dst++ = tatweel;
+                }
+                ++tatweel_index;
             }
             in_word = 1;
         }
@@ -249,7 +289,8 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
     return written_len;
 }
 
-static size_t justify_text(wchar_t *out, wchar_t* text, int target_width, bool nest, float *percents) {
+static size_t justify_text(wchar_t *out, wchar_t* text, int target_width,
+                           bool nest, float *percents, size_t percents_len) {
     wchar_t *start   = text;
     size_t   len;
     size_t   len_tot = 0;
@@ -259,7 +300,7 @@ static size_t justify_text(wchar_t *out, wchar_t* text, int target_width, bool n
 
     while (*start) {
         end = wcschr(start, L'\n');
-        if (percents != NULL) {
+        if (percents != NULL && l_count < percents_len) {
             percent = percents[l_count];
         } else {
             percent = 1;
@@ -281,10 +322,19 @@ static size_t justify_text(wchar_t *out, wchar_t* text, int target_width, bool n
         }
     }
 
+    // The last line wrote a newline over its terminator
+    out[len_tot] = L'\0';
+
     return len_tot;
 }
 
 static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
+    if (page < 0 || page >= QURAN_PAGES) {
+        // The pager asks for the pages around the edges too
+        *buf = L'\0';
+        return 0;
+    }
+
     wchar_t *buf_init = buf;
     size_t print_size = QURAN_PAGE_MAX_WCHARS;
     size_t print_len;
@@ -443,8 +493,10 @@ size_t swprint_page(wchar_t *buf, int page, bool simple, bool just) {
     WCHAR_MALLOC(out, QURAN_PAGE_MAX_WCHARS);
     static float percents_custom[] = {1, 1, .4, .6, .7, .7, .7, .5, .25};
     float *percents = page < 2 ? percents_custom : NULL;
+    size_t percents_len = sizeof(percents_custom) / sizeof(percents_custom[0]);
     bool nest = page <= 1 || page >= 600;
-    len = justify_text(out, buf, QURAN_LINE_MAX_WIDTH, nest, percents);
+    len = justify_text(out, buf, QURAN_LINE_MAX_WIDTH, nest,
+                       percents, percents_len);
     wcscpy(buf, out);
     WCHAR_FREE(out);
     return len;
