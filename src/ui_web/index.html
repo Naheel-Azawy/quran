@@ -14,21 +14,18 @@
              --bg: black;
              --fg: white;
              --bg2: #222;
-             --header: url("header-w.png");
          }
 
          .light {
              --bg: white;
              --fg: black;
              --bg2: #ddd;
-             --header: url("header.png");
          }
 
          .yellow {
              --bg:  #F8EBD5;
              --fg:  black;
              --bg2: white;
-             --header: url("header.png");
          }
 
          @font-face {
@@ -112,14 +109,28 @@
          }
 
          .sura {
-             border:          1px solid var(--fg);
-             box-sizing:      border-box;
-             background:      var(--header);
-             background-size: 100% 100%;
-             font-weight:     bold;
-             position:        relative;
-             z-index:         2;
-             transition:      .3s;
+             box-sizing:  border-box;
+             font-weight: bold;
+             position:    relative;
+             z-index:     2;
+             transition:  .3s;
+         }
+
+         .sura::before {
+             top: 0; right: 0; bottom: 0; left: 0;
+             content:               "";
+             position:              absolute;
+             z-index:               -1;
+             background-color:      var(--fg);
+             -webkit-mask-image:    url("header.svg");
+             mask-image:            url("header.svg");
+             -webkit-mask-repeat:   no-repeat;
+             mask-repeat:           no-repeat;
+             -webkit-mask-position: center;
+             mask-position:         center;
+             -webkit-mask-size:     100% 100%;
+             mask-size:             100% 100%;
+             mask-mode:             alpha;
          }
 
          .aya {

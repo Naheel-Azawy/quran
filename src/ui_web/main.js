@@ -40,7 +40,7 @@ async function main() {
     }
 
     function locDecode(loc) {
-        return {sura: (loc / 1000 |0) - 1, aya: (loc % 1000) - 1};
+        return {sura: (loc / 1000 |0), aya: (loc % 1000)};
     }
 
     function search(target, simple=true) {
@@ -62,13 +62,9 @@ async function main() {
         matches = quran_search_locs(ptr, target_ptr, simple);
         console.log(matches);
 
-        // byteOffset is the pointer itself, not the pointer scaled by the
-        // element size -- this is why arr came back all zeros
         mem = new Uint16Array(memory.buffer, ptr, matches);
-
         let arr = Array.from(mem);
-        // arr is all zeros, not sure why, maybe in c maybe in js TODO: fix
-        //arr = arr.map(loc => locDecode(loc));
+        arr = arr.map(loc => locDecode(loc));
 
         free(ptr);
         free(target_ptr);
