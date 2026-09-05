@@ -458,6 +458,14 @@ static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
         loc = QURAN_LOC_NEXT(loc);
     }
 
+    if (*(buf - 1) != L'\n') {
+        // Not sure why, but sometimes the last break is in the dataset and
+        // sometimes it's not, so, a final check. Close the line before
+        // counting, l_count only sees the breaks that were printed.
+        PPRINT(L"\n");
+        ++l_count;
+    }
+
     if (l_count == 14 && QURAN_AYA(loc) == 0) {
         // Add the sura name at the bottom of the page (e.g. p594)
         PRINT_SURA_NAME(QURAN_SURA(loc));
@@ -468,10 +476,6 @@ static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
         wchar_t* newline2 = wcschr(newline1 + 1, L'\n');
         wmemmove(newline1 + 1, newline2 + 1, wcslen(newline2 + 1) + 1);
         return wcslen(buf_init + 1);
-    } else if (*(buf - 1) != L'\n') {
-        // Not sure why, but sometimes the last break is in the dataset and
-        // sometimes it's not, so, a final check
-        PPRINT(L"\n");
     }
 
 #undef PPRINT
