@@ -13,16 +13,19 @@
 void read_wchar_test() {
     bool simple = true;
     int sura = 0, aya = 0;
-    wchar_t *out;
+    wchar_t out[QURAN_PAGE_MAX_WCHARS];
     size_t len, len_real;
 
     //len = quran_read_wchar(sura, aya, NULL, LONG_MAX, simple); // real length (lighter)
     len = quran_read(sura, aya, NULL); // complex text length (faster)
-    out = (wchar_t *) malloc(sizeof(wchar_t) * (len + 1));
+    // Clamp: quran_read_wchar has no size argument for the aya itself,
+    // only for how much of it we're willing to receive
+    if (len >= QURAN_PAGE_MAX_WCHARS) len = QURAN_PAGE_MAX_WCHARS - 1;
     len_real = quran_read_wchar(sura, aya, out, len, simple);
+    // quran_read_wchar does not null-terminate
+    out[len_real] = L'\0';
 
-    wprintf(L"%d %d >>>%S<<<\n", len, len_real, out);
-    free(out);
+    wprintf(L"%zu %zu >>>%S<<<\n", len, len_real, out);
 }
 
 void print_aya(int sura, int aya, bool simple) {
@@ -276,10 +279,17 @@ int main(int argc, char **argv) {
     } else if (find) { // search for target text
         char *target = args[0];
         size_t len = strlen(target);
-        wchar_t *wtarget = (wchar_t *) malloc(sizeof(wchar_t) * (len + 1));
-        mbstowcs(wtarget, target, len);
+        wchar_t wtarget[QURAN_LINE_MAX_WCHARS];
+        if (len >= QURAN_LINE_MAX_WCHARS) {
+            wprintf(L"Search text too long (max %d characters)\n",
+                    QURAN_LINE_MAX_WCHARS - 1);
+            return EXIT_FAILURE;
+        }
+        len = mbstowcs(wtarget, target, len);
+        // mbstowcs does not guarantee a terminator when it stops at the
+        // size limit rather than the source's own null byte
+        wtarget[len] = L'\0';
         quran_search(wtarget, true, NULL, main_onmatch);
-        free(wtarget);
     } else if (page) { // one page
         int page = atoi(args[0]) - 1;
         print_page(page, simple, list);

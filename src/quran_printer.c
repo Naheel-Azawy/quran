@@ -7,16 +7,15 @@
 
 #include "quran_core.h"
 
-#define WCHAR_MALLOC(name, count) wchar_t *name = malloc(count * sizeof(wchar_t))
-#define WCHAR_FREE(ptr) free(ptr)
+#define WCHAR_MALLOC(name, count) wchar_t name[count]
+#define WCHAR_FREE(ptr) ((void) 0)
 
-/* #define WCHAR_MALLOC(name, count) wchar_t name[count * sizeof(wchar_t)] */
-/* #define WCHAR_FREE(ptr) ((void) 0) */
-
-// TODO: reduce allocations
 // TODO: stop using printf
 // TODO: use quran_chr_t instead of wchar_t
 // TODO: strict size checks
+
+// Extra room for the juzu/sura listing on top of one page of text
+#define QURAN_INDEX_MAX_WCHARS (QURAN_PAGE_MAX_WCHARS + 1024)
 
 // Share of the extra line width filled with tatweel, the rest goes to spaces
 #define TATWEEL_RATIO .8
@@ -577,9 +576,8 @@ size_t wprint_index(wchar_t *out, size_t size) {
 }
 
 size_t fwprint_index(FILE *f) {
-    const size_t size = 2048 + 1024;
-    WCHAR_MALLOC(buf, size);
-    wprint_index(buf, size);
+    WCHAR_MALLOC(buf, QURAN_INDEX_MAX_WCHARS);
+    wprint_index(buf, QURAN_INDEX_MAX_WCHARS);
     size_t len = fwprintf(f, L"%S", buf);
     WCHAR_FREE(buf);
     return len;
