@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <link rel="manifest" href="manifest.webmanifest">
+        <meta name="description" content="The holy Quran">
+        <meta name="keywords" content="quran islam">
+        <meta name="author" content="Naheel">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+        <link rel="icon" href="icon.png">
+        <title>Quran</title>
+        <style>
+         :root {
+             --bg: black;
+             --fg: white;
+             --bg2: #222;
+             --header: url("header-w.png");
+         }
+
+         .light {
+             --bg: white;
+             --fg: black;
+             --bg2: #ddd;
+             --header: url("header.png");
+         }
+
+         .yellow {
+             --bg:  #F8EBD5;
+             --fg:  black;
+             --bg2: white;
+             --header: url("header.png");
+         }
+
+         @font-face {
+             font-family:  'me_quran';
+             src:          url('fonts/me_quran.ttf') format('truetype');
+             font-display: block;
+         }
+
+         @font-face {
+             font-family:  'kufi';
+             src:          url('fonts/KFGQPC-KufiStyV14.ttf') format('truetype');
+             font-display: block;
+         }
+
+         @font-face {
+             font-family:  'uthman';
+             src:          url('fonts/UthmanTN_v2-0.ttf') format('truetype');
+             font-display: block;
+         }
+
+         @font-face {
+             font-family:  'jalil';
+             src:          url('fonts/AlJalil_v01.ttf') format('truetype');
+             font-display: block;
+         }
+
+         @font-face {
+             font-family:  'amiri';
+             src:          url('fonts/Amiri-Regular.ttf') format('truetype');
+             font-display: block;
+         }
+
+         body {
+             overscroll-behavior-x: none;
+         }
+
+         body, input, button, select {
+             color:      var(--fg);
+             background: var(--bg);
+         }
+
+         #output {
+             margin:          auto;
+             width:           30em;
+             height:          46em;
+             font-size:       13px;
+             direction:       rtl;
+             border:          1px solid var(--fg);
+             text-align:      justify;
+             text-align-last: justify;
+             overflow-y:      hidden;
+         }
+
+         .header {
+             width:           100%;
+             border-collapse: collapse;
+             table-layout:    fixed;
+             text-align:      center;
+             text-align-last: center;
+             font-size:       .8em;
+         }
+
+         .header input {
+             font-size: 1em;
+         }
+
+         .page-text {
+             transform-origin: top left;
+             transform:        scaleY(1.3);
+         }
+
+         .page {
+             border-left:   1px solid var(--fg);
+             padding-right: .5em;
+             padding-left:  .5em;
+             box-sizing:    border-box;
+         }
+
+         .header input {
+             width: 3em;
+         }
+
+         .sura {
+             border:          1px solid var(--fg);
+             box-sizing:      border-box;
+             background:      var(--header);
+             background-size: 100% 100%;
+             font-weight:     bold;
+             position:        relative;
+             z-index:         2;
+             transition:      .3s;
+         }
+
+         .aya {
+             transition: .3s;
+         }
+
+         .aya:hover {
+             background: var(--bg2);
+         }
+        </style>
+    </head>
+    <body>
+        <div id="output"></div><br>
+        <button onclick="simple_tog()">SIMPLE</button>
+        <select onchange="theme_set(this.value)">
+            <option>Black</option>
+            <option>White</option>
+            <option>Yellow</option>
+        </select>
+        <select onchange="document.getElementById('output').style.fontFamily = this.value">
+            <option>me_quran</option>
+            <option>kufi</option>
+            <option>uthman</option>
+            <option>amiri</option>
+        </select>
+
+        <script src="wasm_loader.js"></script>
+        <script src="viewpager.js"></script>
+        <script src="main.js"></script>
+    </body>
+</html>

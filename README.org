@@ -1,0 +1,30 @@
+* Quran
+A minimal Quran for CLI, TUI, and web written in C (and JavaScript for web).
+
+** TUI
+#+begin_src shell
+  $ make install
+#+end_src
+
+** Web
+#+begin_src shell
+  $ make web
+#+end_src
+
+#+begin_src shell
+  $ make web-serve
+#+end_src
+
+#+begin_src shell
+  $ make web-push SERVER=me@example.tld
+#+end_src
+
+** Dependencies
+- ~gcc~
+- ~node~
+- ~emcc~ for web
+- ~fribidi~ - optional for TUI
+- ~fzf~ - optional for TUI
+
+** License
+GPL-3
