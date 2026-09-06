@@ -129,19 +129,13 @@ struct match_res {
 void quran_search_locs_onmatch(int _, quran_loc_t loc, int start, int end, void *user) {
     (void) start; // TODO: consider adding
     (void) end;
-    if (user == NULL) return;
     struct match_res *res = (struct match_res *) user;
+    if (res->locs == NULL) return;
     res->locs[res->count++] = loc;
 }
 
 int quran_search_locs(quran_loc_t *locs, wchar_t *target, bool simple) {
     struct match_res r = {0, locs};
-    wprintf(L">>> hi\n");
-    int matches = quran_search(target, simple, (void *) &r,
-                               quran_search_locs_onmatch);
-    wprintf(L">>> TODO: nothing??\n");
-    for (int i = 0; i < matches; ++i) {
-        wprintf(L">>> %d\n", r.locs[i]);
-    }
-    return matches;
+    return quran_search(target, simple, (void *) &r,
+                        quran_search_locs_onmatch);
 }

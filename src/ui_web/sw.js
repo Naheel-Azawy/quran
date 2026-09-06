@@ -2,11 +2,11 @@ let   cacheName   = VERSION;
 const title       = "Quran";
 const cacheAssets = [
     "fonts/me_quran.ttf",
-    "header.png",
-    "header-w.png",
+    "header.svg",
     "icon.png",
     "index.html",
     "main.js",
+    "style.css",
     "manifest.webmanifest",
     "viewpager.js",
     "wasm_loader.js",

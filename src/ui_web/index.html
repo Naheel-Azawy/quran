@@ -1,164 +1,130 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
         <link rel="manifest" href="manifest.webmanifest">
+        <link rel="icon" href="icon.png">
+        <link rel="stylesheet" href="style.css">
         <meta name="description" content="The holy Quran">
         <meta name="keywords" content="quran islam">
         <meta name="author" content="Naheel">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-        <link rel="icon" href="icon.png">
-        <title>Quran</title>
-        <style>
-         :root {
-             --bg: black;
-             --fg: white;
-             --bg2: #222;
-         }
-
-         .light {
-             --bg: white;
-             --fg: black;
-             --bg2: #ddd;
-         }
-
-         .yellow {
-             --bg:  #F8EBD5;
-             --fg:  black;
-             --bg2: white;
-         }
-
-         @font-face {
-             font-family:  'me_quran';
-             src:          url('fonts/me_quran.ttf') format('truetype');
-             font-display: block;
-         }
-
-         @font-face {
-             font-family:  'kufi';
-             src:          url('fonts/KFGQPC-KufiStyV14.ttf') format('truetype');
-             font-display: block;
-         }
-
-         @font-face {
-             font-family:  'uthman';
-             src:          url('fonts/UthmanTN_v2-0.ttf') format('truetype');
-             font-display: block;
-         }
-
-         @font-face {
-             font-family:  'jalil';
-             src:          url('fonts/AlJalil_v01.ttf') format('truetype');
-             font-display: block;
-         }
-
-         @font-face {
-             font-family:  'amiri';
-             src:          url('fonts/Amiri-Regular.ttf') format('truetype');
-             font-display: block;
-         }
-
-         body {
-             overscroll-behavior-x: none;
-         }
-
-         body, input, button, select {
-             color:      var(--fg);
-             background: var(--bg);
-         }
-
-         #output {
-             margin:          auto;
-             width:           30em;
-             height:          46em;
-             font-size:       13px;
-             direction:       rtl;
-             border:          1px solid var(--fg);
-             text-align:      justify;
-             text-align-last: justify;
-             overflow-y:      hidden;
-         }
-
-         .header {
-             width:           100%;
-             border-collapse: collapse;
-             table-layout:    fixed;
-             text-align:      center;
-             text-align-last: center;
-             font-size:       .8em;
-         }
-
-         .header input {
-             font-size: 1em;
-         }
-
-         .page-text {
-             transform-origin: top left;
-             transform:        scaleY(1.3);
-         }
-
-         .page {
-             border-left:   1px solid var(--fg);
-             padding-right: .5em;
-             padding-left:  .5em;
-             box-sizing:    border-box;
-         }
-
-         .header input {
-             width: 3em;
-         }
-
-         .sura {
-             box-sizing:  border-box;
-             font-weight: bold;
-             position:    relative;
-             z-index:     2;
-             transition:  .3s;
-         }
-
-         .sura::before {
-             top: 0; right: 0; bottom: 0; left: 0;
-             content:               "";
-             position:              absolute;
-             z-index:               -1;
-             background-color:      var(--fg);
-             -webkit-mask-image:    url("header.svg");
-             mask-image:            url("header.svg");
-             -webkit-mask-repeat:   no-repeat;
-             mask-repeat:           no-repeat;
-             -webkit-mask-position: center;
-             mask-position:         center;
-             -webkit-mask-size:     100% 100%;
-             mask-size:             100% 100%;
-             mask-mode:             alpha;
-         }
-
-         .aya {
-             transition: .3s;
-         }
-
-         .aya:hover {
-             background: var(--bg2);
-         }
-        </style>
+        <title>القرآن الكريم</title>
     </head>
     <body>
-        <div id="output"></div><br>
-        <button onclick="simple_tog()">SIMPLE</button>
-        <select onchange="theme_set(this.value)">
-            <option>Black</option>
-            <option>White</option>
-            <option>Yellow</option>
-        </select>
-        <select onchange="document.getElementById('output').style.fontFamily = this.value">
-            <option>me_quran</option>
-            <option>kufi</option>
-            <option>uthman</option>
-            <option>amiri</option>
-        </select>
+        <header class="toolbar">
+            <select id="sura-select" aria-label="اختر سورة"></select>
 
-        <script src="wasm_loader.js"></script>
-        <script src="viewpager.js"></script>
-        <script src="main.js"></script>
+            <input id="page-input" class="page-input" type="number"
+                   min="1" max="604" inputmode="numeric" aria-label="اذهب إلى صفحة">
+
+            <button id="btn-search" class="icon-btn" aria-label="بحث" title="بحث">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+
+            <button id="btn-settings" class="icon-btn" aria-label="الإعدادات" title="الإعدادات">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <line x1="4" y1="7"  x2="20" y2="7"  stroke="currentColor" stroke-width="2"/>
+                    <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2"/>
+                    <line x1="4" y1="17" x2="20" y2="17" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="8"  cy="7"  r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="16" cy="12" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="10" cy="17" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </button>
+        </header>
+
+        <main class="pager-wrap">
+            <button id="btn-prev" class="nav-btn nav-prev" aria-label="الصفحة السابقة" title="الصفحة السابقة">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor"
+                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+
+            <div id="output"></div>
+
+            <button id="btn-next" class="nav-btn nav-next" aria-label="الصفحة التالية" title="الصفحة التالية">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor"
+                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </main>
+
+        <div id="overlay-backdrop" hidden></div>
+
+        <section id="panel-search" class="overlay-panel" hidden>
+            <div class="panel-header">
+                <input id="search-input" type="search" placeholder="ابحث في القرآن…" autocomplete="off">
+                <button class="icon-btn" data-close aria-label="إغلاق">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <ul id="search-results" class="result-list"></ul>
+        </section>
+
+        <section id="panel-settings" class="overlay-panel" hidden>
+            <div class="panel-header">
+                <h2>الإعدادات</h2>
+                <button class="icon-btn" data-close aria-label="إغلاق">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="setting-group">
+                <span class="setting-label">المظهر</span>
+                <div class="theme-swatches" role="radiogroup" aria-label="المظهر">
+                    <button class="swatch swatch-black"  data-theme="black"  aria-label="أسود"></button>
+                    <button class="swatch swatch-white"  data-theme="white"  aria-label="أبيض"></button>
+                    <button class="swatch swatch-yellow" data-theme="yellow" aria-label="أصفر"></button>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label" for="font-select">الخط</label>
+                <select id="font-select">
+                    <option value="me_quran">me_quran</option>
+                    <option value="kufi">kufi</option>
+                    <option value="uthman">uthman</option>
+                    <option value="jalil">jalil</option>
+                    <option value="amiri">amiri</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label class="switch">
+                    <input type="checkbox" id="simple-toggle">
+                    <span class="switch-track"><span class="switch-thumb"></span></span>
+                    <span class="switch-label">إخفاء التشكيل</span>
+                </label>
+            </div>
+        </section>
+
+        <section id="panel-aya" class="overlay-panel" hidden>
+            <div class="panel-header">
+                <h2 id="aya-title"></h2>
+                <button class="icon-btn" data-close aria-label="إغلاق">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <p id="aya-text" class="aya-detail-text"></p>
+        </section>
+
+        <script src="wasm_loader.js?v=0.0.2"></script>
+        <script src="viewpager.js?v=0.0.2"></script>
+        <script src="main.js?v=0.0.2"></script>
     </body>
 </html>
