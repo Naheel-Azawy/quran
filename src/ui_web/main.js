@@ -539,7 +539,6 @@ async function main() {
             ? localStorage["quran-autoadvance"] === "true" : true,
         sura:    null,
         aya:     null,
-        playing: false,
     };
 
     function audioUrl(sura, aya) {
@@ -575,32 +574,60 @@ async function main() {
     }
 
     function updateAudioUI() {
+        // .paused is the actual source of truth; a separately-tracked
+        // boolean can drift out of sync if a play/pause event from a
+        // slot that's since stopped being "active" arrives late
+        const playing = audioState.sura != null && !activeAudio().paused;
+
         const label = document.getElementById("audio-now-playing");
         label.textContent = audioState.sura != null
             ? `${suraNames[audioState.sura]} ﴿${toArabicDigits(audioState.aya + 1)}﴾`
             : "لم يبدأ التشغيل";
 
         const playBtn = document.getElementById("btn-audio-playpause");
-        playBtn.classList.toggle("is-playing", audioState.playing);
-        const playLabel = audioState.playing ? "إيقاف مؤقت" : "تشغيل";
+        playBtn.classList.toggle("is-playing", playing);
+        const playLabel = playing ? "إيقاف مؤقت" : "تشغيل";
         playBtn.setAttribute("aria-label", playLabel);
         playBtn.title = playLabel;
 
         document.getElementById("btn-audio-stop").disabled = audioState.sura == null;
-        document.getElementById("btn-audio").classList.toggle("audio-active", audioState.playing);
+        document.getElementById("btn-audio").classList.toggle("audio-active", playing);
     }
 
-    function gotoPlayingAya() {
+    // Whether page-navigation should auto-follow the playing ayah. True
+    // right after any explicit jump (play button, prev/next-aya, "play
+    // from here") and whenever the user is already on (or returns to) the
+    // page containing it; false the moment the user navigates elsewhere
+    // on their own while audio keeps advancing in the background.
+    let followPlayback = true;
+    // Set just before *our own* vp.goto() calls, so the pager's onChange
+    // handler (which also fires for user-driven navigation) can tell the
+    // two apart and only reconsider followPlayback for real user moves.
+    let programmaticNav = false;
+
+    function gotoPlayingAya(opts = {}) {
+        const force = !!opts.force;
         const targetPage = pageOfSuraAya(audioState.sura, audioState.aya);
-        if (targetPage !== globalThis.page) {
-            vp.goto(targetPage);
-            // the target page's markup may still be mid-transition;
-            // give it a moment before looking for the .aya element,
-            // mirroring blinkAya's own use of this delay
-            setTimeout(applyPlayingHighlight, vp.transitionSpeed + 50);
-        } else {
+
+        if (targetPage === globalThis.page) {
+            // already here -- (re)join auto-following
+            followPlayback = true;
             applyPlayingHighlight();
+            return;
         }
+        if (!force && !followPlayback) {
+            // the user wandered off to browse elsewhere; don't drag them
+            // back just because playback moved to a different page
+            return;
+        }
+
+        followPlayback = true;
+        programmaticNav = true;
+        vp.goto(targetPage);
+        // the target page's markup may still be mid-transition;
+        // give it a moment before looking for the .aya element,
+        // mirroring blinkAya's own use of this delay
+        setTimeout(applyPlayingHighlight, vp.transitionSpeed + 50);
     }
 
     // Pre-buffers the ayah after the current one into the standby slot so
@@ -693,7 +720,7 @@ async function main() {
         active.src = audioUrl(sura, aya);
         active.play().catch(e => console.warn("Audio playback blocked:", e));
 
-        gotoPlayingAya();
+        gotoPlayingAya({ force: true });
         updateAudioUI();
         preloadNext();
     }
@@ -708,7 +735,6 @@ async function main() {
         queuedNext = null;
         audioState.sura    = null;
         audioState.aya     = null;
-        audioState.playing = false;
         applyPlayingHighlight();
         updateAudioUI();
     }
@@ -739,14 +765,10 @@ async function main() {
 
     slots.forEach((audio, i) => {
         audio.addEventListener("play", () => {
-            if (i !== activeIdx) return;
-            audioState.playing = true;
             applyPlayingHighlight();
             updateAudioUI();
         });
         audio.addEventListener("pause", () => {
-            if (i !== activeIdx) return;
-            audioState.playing = false;
             applyPlayingHighlight();
             updateAudioUI();
         });
@@ -913,6 +935,15 @@ async function main() {
             globalThis.page = page;
             localStorage["quran-page"] = page;
             syncToolbar(page);
+
+            if (programmaticNav) {
+                programmaticNav = false;
+            } else if (audioState.sura != null) {
+                // a real user navigation (swipe, prev/next page, sura
+                // select, page jump, search result...): follow only if
+                // it happens to land them back on the playing page
+                followPlayback = (page === pageOfSuraAya(audioState.sura, audioState.aya));
+            }
         },
     });
 
