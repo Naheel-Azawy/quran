@@ -2,8 +2,9 @@
 
 :root {
     --bg:       black;
-    --fg:       white;
     --bg2:      #222;
+    --fg:       white;
+    --fg2:      #666;
     --radius:   .5em;
     --accent:   #b5a642;
 
@@ -17,16 +18,18 @@
 
 .light {
     --bg:     white;
-    --fg:     black;
     --bg2:    #ddd;
+    --fg:     black;
+    --fg2:    #aaa;
     --accent: #a08c1f;
     --aya-ring-fill: var(--fg);
 }
 
 .yellow {
     --bg:     #F8EBD5;
-    --fg:     black;
     --bg2:    #f9ddad;
+    --fg:     black;
+    --fg2:    #aaa;
     --accent: #8a6d1d;
     --aya-ring-fill: var(--fg);
 }
@@ -90,62 +93,17 @@ input, button, select {
     transition: background-color .25s ease, color .25s ease, border-color .25s ease;
 }
 
-/* ---------- Toolbar ---------- */
+/* ---------- Pager (main view: just the mushaf + its own prev/next) ---------- */
 
-.toolbar {
-    flex:         0 0 auto;
-    display:      flex;
-    align-items:  center;
-    gap:          .5em;
-    padding:      .5em;
-    border-bottom: 1px solid var(--fg);
-}
-
-#sura-select {
-    flex:      1 1 auto;
-    min-width: 0;
-    height:    2em;
-    padding:   .4em;
-}
-
-.page-input {
-    flex:       0 0 auto;
-    width:      3em;
-    padding:    .4em;
-    text-align: center;
-}
-
-.icon-btn {
-    flex:            0 0 auto;
+.pager-wrap {
+    position:        relative;
+    flex:            1 1 auto;
+    min-height:      0;
     display:         flex;
     align-items:     center;
     justify-content: center;
-    width:           2em;
-    height:          2em;
-    padding:         0;
-    background:      transparent;
-    cursor:          pointer;
-    transition:      background-color .15s ease, transform .1s ease;
-}
-
-.icon-btn:hover {
-    background: var(--bg2);
-}
-
-.icon-btn:active {
-    transform: scale(.9);
-}
-
-/* ---------- Pager ---------- */
-
-.pager-wrap {
-    position: relative;
-    flex:     1 1 auto;
-    min-height: 0;
-    display:  flex;
-    align-items:     center;
-    justify-content: center;
-    overflow: hidden;
+    overflow:        hidden;
+    box-sizing:      border-box;
 }
 
 .nav-btn {
@@ -188,6 +146,75 @@ input, button, select {
 .nav-prev { right: .5em; }
 .nav-prev svg { transform: scaleX(-1); }
 
+/* ---------- Floating menu button (three dots) ---------- */
+
+.fab-menu {
+    position:        fixed;
+    z-index:         9;
+    top:             1em;
+    right:           1em;
+    left:            auto;
+    bottom:          auto;
+    width:           1.5em;
+    height:          1.5em;
+    padding:         0;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    border:          none;
+    background:      transparent;
+    box-shadow:      0 .3em 1.2em rgba(0, 0, 0, .35);
+    cursor:          pointer;
+    opacity:         1;
+    transition:      transform .15s ease, box-shadow .15s ease, opacity .18s ease,
+                     background-color .25s ease, border-color .25s ease;
+}
+
+.fab-menu:hover   { transform: scale(1.1); color: var(--accent); }
+.fab-menu:active  { transform: scale(.92); }
+
+/* Faded out (and click-through) while any overlay panel is open, so it
+   never sits visibly on top of the panel/backdrop */
+.fab-menu.hidden {
+    opacity:        0;
+    pointer-events: none;
+}
+
+.fab-menu .menu-dot {
+    display: none;
+}
+
+.fab-menu.audio-active .menu-dot {
+    display:       block;
+    position:      absolute;
+    top:           0;
+    right:         -.4em;
+    width:         .55em;
+    height:        .55em;
+    border-radius: 50%;
+    background:    var(--accent);
+    animation:     audio-pulse 1.2s ease-in-out infinite;
+}
+
+/* ---------- Narrow vertical phones: menu button moves to bottom-center ---------- */
+
+@media (max-width: 700px) and (orientation: portrait) {
+    .nav-btn {
+        display: none;
+    }
+
+    .fab-menu {
+        top:      auto;
+        right:    auto;
+        left:     50%;
+        bottom:   calc(.5em + env(safe-area-inset-bottom, 0px));
+        transform: translateX(-50%);
+    }
+
+    .fab-menu:hover  { transform: translateX(-50%) scale(1.06); }
+    .fab-menu:active { transform: translateX(-50%) scale(.92); }
+}
+
 /* ---------- Mushaf page ---------- */
 
 /* Anywhere actual Quran text (or its ayah-marker styling) is shown */
@@ -195,7 +222,8 @@ input, button, select {
 .aya-detail-text,
 #aya-title,
 .result-label,
-.result-text {
+.result-text,
+.sura-name {
     font-family: var(--quran-font), serif;
 }
 
@@ -342,7 +370,7 @@ input, button, select {
 .aya-dot  { fill: var(--aya-ring-fill); }
 .aya-line { fill: none;            stroke: var(--aya-ring-fill); }
 
-/* ---------- Overlay panels (search / settings / aya) ---------- */
+/* ---------- Overlay panels (menu / suras / page / search / settings / audio / aya) ---------- */
 
 #overlay-backdrop {
     position: fixed;
@@ -410,6 +438,240 @@ input, button, select {
     flex:    1 1 auto;
     min-width: 0;
     padding: .5em;
+}
+
+.icon-back svg {
+    transform: scaleX(-1);
+}
+
+.panel-subheader {
+    flex:    0 0 auto;
+    padding: .5em .6em;
+    border-bottom: 1px solid var(--bg2);
+}
+
+.panel-subheader input {
+    width:   100%;
+    padding: .5em;
+    box-sizing: border-box;
+}
+
+/* ---------- Main menu ---------- */
+
+.menu-list {
+    flex:      1 1 auto;
+    margin:    0;
+    padding:   .4em;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.menu-item {
+    width:       100%;
+    display:     flex;
+    align-items: center;
+    gap:         .8em;
+    padding:     .9em .6em;
+    background:  transparent;
+    border:      none;
+    border-radius: var(--radius);
+    cursor:      pointer;
+    font-size:   1em;
+    text-align:  right;
+    transition:  background-color .15s ease;
+}
+
+.menu-item:hover  { background: var(--bg2); }
+.menu-item:active { transform: scale(.98); }
+
+.menu-item-icon {
+    flex:            none;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    width:           1.6em;
+    height:          1.6em;
+    color:           var(--accent);
+}
+
+.menu-item-label {
+    flex:      1 1 auto;
+    min-width: 0;
+    text-align: right;
+}
+
+.menu-item-audio-dot {
+    display: none;
+}
+
+.menu-item-audio-dot.active {
+    display:       block;
+    flex:          none;
+    width:         .5em;
+    height:        .5em;
+    border-radius: 50%;
+    background:    var(--accent);
+    animation:     audio-pulse 1.2s ease-in-out infinite;
+}
+
+.menu-item-chevron {
+    flex:    none;
+    display: flex;
+    color:   var(--fg);
+    opacity: .5;
+}
+
+.menu-row.menu-audio-row {
+    display:     flex;
+    align-items: center;
+    gap:         .2em;
+    padding:     0 .3em;
+}
+
+.menu-audio-row .menu-item {
+    flex:      1 1 auto;
+    min-width: 0;
+}
+
+.menu-quick-btn {
+    flex:  none;
+    color: var(--accent);
+}
+
+.menu-quick-btn:disabled {
+    opacity: .35;
+    cursor:  default;
+}
+
+/* ---------- Sura index (custom list, not a native <select>) ---------- */
+
+.sura-list {
+    flex:       1 1 auto;
+    margin:     0;
+    padding:    0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.sura-item {
+    display:     flex;
+    align-items: center;
+    gap:         .8em;
+    padding:     .6em .8em;
+    border-top:  1px solid var(--bg2);
+    cursor:      pointer;
+    transition:  background-color .15s ease, color .15s ease;
+}
+
+.sura-item:first-child {
+    border-top: none;
+}
+
+.sura-item:hover {
+    background: var(--bg2);
+}
+
+.sura-item.active {
+    background: var(--accent);
+    color:      var(--bg);
+}
+
+.sura-badge {
+    flex:            none;
+    width:           2.2em;
+    height:          2.2em;
+    border-radius:   50%;
+    border:          1px solid currentColor;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    font-size:       .85em;
+    font-weight:     bold;
+}
+
+.sura-info {
+    flex:      1 1 auto;
+    min-width: 0;
+    display:   flex;
+    flex-direction: column;
+}
+
+.sura-name {
+    font-size:    1.15em;
+    overflow:     hidden;
+    text-overflow: ellipsis;
+    white-space:  nowrap;
+}
+
+.sura-meta {
+    font-size: .8em;
+    opacity:   .75;
+}
+
+.sura-empty {
+    padding:    1.2em .8em;
+    text-align: center;
+    opacity:    .7;
+}
+
+/* ---------- Jump to page ---------- */
+
+.page-jump-body {
+    padding: 1em;
+    display: flex;
+    flex-direction: column;
+    gap: .6em;
+}
+
+.page-jump-row {
+    display: flex;
+    gap:     .5em;
+}
+
+.page-jump-row input {
+    flex:      1 1 auto;
+    min-width: 0;
+    padding:   .6em;
+    text-align: center;
+    font-size: 1.1em;
+}
+
+.btn-primary {
+    flex:          none;
+    padding:       .6em 1.2em;
+    background:    var(--accent);
+    color:         var(--bg);
+    border:        none;
+    border-radius: var(--radius);
+    cursor:        pointer;
+    font-weight:   bold;
+    transition:    transform .1s ease, filter .15s ease;
+}
+
+.btn-primary:hover  { filter: brightness(1.08); }
+.btn-primary:active { transform: scale(.96); }
+
+/* ---------- Icon buttons (shared) ---------- */
+
+.icon-btn {
+    flex:            0 0 auto;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    width:           2em;
+    height:          2em;
+    padding:         0;
+    background:      transparent;
+    cursor:          pointer;
+    transition:      background-color .15s ease, transform .1s ease;
+}
+
+.icon-btn:hover {
+    background: var(--bg2);
+}
+
+.icon-btn:active {
+    transform: scale(.9);
 }
 
 /* ---------- Search results ---------- */
@@ -564,31 +826,6 @@ input, button, select {
 
 /* ---------- Audio ---------- */
 
-#btn-audio {
-    position: relative;
-}
-
-.audio-dot {
-    display: none;
-}
-
-#btn-audio.audio-active .audio-dot {
-    display:       block;
-    position:      absolute;
-    top:           .3em;
-    right:         .3em;
-    width:         .5em;
-    height:        .5em;
-    border-radius: 50%;
-    background:    var(--accent);
-    animation:     audio-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes audio-pulse {
-    0%, 100% { opacity: .35; transform: scale(.8); }
-    50%      { opacity: 1;   transform: scale(1); }
-}
-
 .audio-now-playing {
     margin:     0;
     padding:    .6em .8em;
@@ -596,6 +833,12 @@ input, button, select {
     opacity:    .75;
     font-size:  .95em;
     min-height: 1.2em;
+    cursor:     pointer;
+}
+
+@keyframes audio-pulse {
+    0%, 100% { opacity: .35; transform: scale(.8); }
+    50%      { opacity: 1;   transform: scale(1); }
 }
 
 .audio-controls {
@@ -642,22 +885,14 @@ input, button, select {
     border-radius: .2em;
 }
 
-/* ---------- Narrow phones ---------- */
+/* ---------- Narrow phones (bottom-sheet panels) ---------- */
 
 @media (max-width: 480px) {
-    .toolbar {
-        flex-wrap: wrap;
-    }
-
-    .nav-btn {
-        display: none;
-    }
-
     .overlay-panel {
         top:      auto;
         bottom:   0;
         left:     0;
-        width:    100%;
+        width:    99%;
         max-height: 85vh;
         border-radius: var(--radius) var(--radius) 0 0;
         border-bottom: none;
@@ -685,3 +920,21 @@ input, textarea, button, select, a, div {
     outline: none !important;
 }
 
+/* Scrollbars */
+::-webkit-scrollbar {
+    width:  .5em;
+    height: .5em;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--fg2);
+    border-radius: .5em;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--fg);
+}

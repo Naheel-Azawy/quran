@@ -12,40 +12,6 @@
         <title>القرآن الكريم</title>
     </head>
     <body>
-        <header class="toolbar">
-            <select id="sura-select" aria-label="اختر سورة"></select>
-
-            <input id="page-input" class="page-input" type="number"
-                   min="1" max="604" inputmode="numeric" aria-label="اذهب إلى صفحة">
-
-            <button id="btn-search" class="icon-btn" aria-label="بحث" title="بحث">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                    <circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
-                    <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </button>
-
-            <button id="btn-audio" class="icon-btn" aria-label="الاستماع" title="الاستماع">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                    <path d="M4 15v-3a8 8 0 0 1 16 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <rect x="2" y="14" width="5" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>
-                    <rect x="17" y="14" width="5" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>
-                </svg>
-                <span class="audio-dot" aria-hidden="true"></span>
-            </button>
-
-            <button id="btn-settings" class="icon-btn" aria-label="الإعدادات" title="الإعدادات">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                    <line x1="4" y1="7"  x2="20" y2="7"  stroke="currentColor" stroke-width="2"/>
-                    <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2"/>
-                    <line x1="4" y1="17" x2="20" y2="17" stroke="currentColor" stroke-width="2"/>
-                    <circle cx="8"  cy="7"  r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
-                    <circle cx="16" cy="12" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
-                    <circle cx="10" cy="17" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
-                </svg>
-            </button>
-        </header>
-
         <main class="pager-wrap">
             <button id="btn-prev" class="nav-btn nav-prev" aria-label="الصفحة السابقة" title="الصفحة السابقة">
                 <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -64,10 +30,169 @@
             </button>
         </main>
 
+        <button id="btn-menu" class="fab-menu" aria-label="القائمة" title="القائمة">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <circle cx="5"  cy="12" r="2" fill="currentColor"/>
+                <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                <circle cx="19" cy="12" r="2" fill="currentColor"/>
+            </svg>
+            <span class="menu-dot" aria-hidden="true"></span>
+        </button>
+
         <div id="overlay-backdrop" hidden></div>
+
+        <!-- ---------- main menu ---------- -->
+
+        <section id="panel-menu" class="overlay-panel panel-menu" hidden>
+            <div class="panel-header">
+                <h2>القائمة</h2>
+                <button class="icon-btn" data-close aria-label="إغلاق">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <ul class="menu-list">
+                <li>
+                    <button class="menu-item" data-target="panel-suras">
+                        <span class="menu-item-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <line x1="4" y1="6"  x2="20" y2="6"  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="4" y1="18" x2="14" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="menu-item-label">الفهرس</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="menu-item" data-target="panel-page">
+                        <span class="menu-item-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <rect x="5" y="3" width="14" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                                <line x1="9" y1="8"  x2="15" y2="8"  stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <line x1="9" y1="12" x2="15" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <line x1="9" y1="16" x2="12" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="menu-item-label">الانتقال إلى صفحة</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="menu-item" data-target="panel-search">
+                        <span class="menu-item-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+                                <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="menu-item-label">بحث</span>
+                    </button>
+                </li>
+                <li class="menu-row menu-audio-row">
+                    <button class="menu-item" data-target="panel-audio">
+                        <span class="menu-item-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <path d="M4 15v-3a8 8 0 0 1 16 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <rect x="2" y="14" width="5" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                                <rect x="17" y="14" width="5" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </span>
+                        <span class="menu-item-label">الاستماع</span>
+                        <span id="menu-audio-dot" class="menu-item-audio-dot" aria-hidden="true"></span>
+                    </button>
+                    <button id="btn-menu-audio-stop" class="icon-btn menu-quick-btn" aria-label="إيقاف" title="إيقاف" disabled>
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                            <rect x="5" y="5" width="14" height="14" fill="currentColor"/>
+                        </svg>
+                    </button>
+                    <button id="btn-menu-audio-playpause" class="icon-btn menu-quick-btn audio-playpause" aria-label="تشغيل" title="تشغيل">
+                        <svg class="icon-play" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                            <polygon points="6,4 20,12 6,20" fill="currentColor"/>
+                        </svg>
+                        <svg class="icon-pause" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                            <rect x="5" y="4" width="5" height="16" fill="currentColor"/>
+                            <rect x="14" y="4" width="5" height="16" fill="currentColor"/>
+                        </svg>
+                    </button>
+                </li>
+                <li>
+                    <button class="menu-item" data-target="panel-settings">
+                        <span class="menu-item-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <line x1="4" y1="7"  x2="20" y2="7"  stroke="currentColor" stroke-width="2"/>
+                                <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2"/>
+                                <line x1="4" y1="17" x2="20" y2="17" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="8"  cy="7"  r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="16" cy="12" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="10" cy="17" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </span>
+                        <span class="menu-item-label">الإعدادات</span>
+                    </button>
+                </li>
+            </ul>
+        </section>
+
+        <!-- ---------- sura index (custom, not a native select) ---------- -->
+
+        <section id="panel-suras" class="overlay-panel" hidden>
+            <div class="panel-header">
+                <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع">
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <h2>الفهرس</h2>
+                <button class="icon-btn" data-close aria-label="إغلاق">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="panel-subheader">
+                <input id="sura-filter" type="search" placeholder="ابحث عن سورة…" autocomplete="off">
+            </div>
+            <ul id="sura-list" class="sura-list" role="listbox" aria-label="السور"></ul>
+        </section>
+
+        <!-- ---------- jump to page ---------- -->
+
+        <section id="panel-page" class="overlay-panel panel-page" hidden>
+            <div class="panel-header">
+                <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع">
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <h2>الانتقال إلى صفحة</h2>
+                <button class="icon-btn" data-close aria-label="إغلاق">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="page-jump-body">
+                <label class="setting-label" for="page-input">رقم الصفحة (١ - ٦٠٤)</label>
+                <div class="page-jump-row">
+                    <input id="page-input" type="number" min="1" max="604" inputmode="numeric" aria-label="اذهب إلى صفحة">
+                    <button id="btn-page-go" class="btn-primary">اذهب</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ---------- search ---------- -->
 
         <section id="panel-search" class="overlay-panel" hidden>
             <div class="panel-header">
+                <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع">
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
                 <input id="search-input" type="search" placeholder="ابحث في القرآن…" autocomplete="off">
                 <button class="icon-btn" data-close aria-label="إغلاق">
                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -79,8 +204,15 @@
             <ul id="search-results" class="result-list"></ul>
         </section>
 
+        <!-- ---------- settings ---------- -->
+
         <section id="panel-settings" class="overlay-panel" hidden>
             <div class="panel-header">
+                <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع">
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
                 <h2>الإعدادات</h2>
                 <button class="icon-btn" data-close aria-label="إغلاق">
                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -119,8 +251,15 @@
             </div>
         </section>
 
+        <!-- ---------- audio ---------- -->
+
         <section id="panel-audio" class="overlay-panel" hidden>
             <div class="panel-header">
+                <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع">
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
                 <h2>الاستماع</h2>
                 <button class="icon-btn" data-close aria-label="إغلاق">
                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -182,6 +321,8 @@
                 </button>
             </div>
         </section>
+
+        <!-- ---------- aya detail (opened by tapping an aya on the page) ---------- -->
 
         <section id="panel-aya" class="overlay-panel" hidden>
             <div class="panel-header">

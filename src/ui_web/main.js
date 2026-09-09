@@ -334,19 +334,67 @@ async function main() {
 
     // ---------- navigation ----------
 
-    const suraSelect = document.getElementById("sura-select");
     const pageInput  = document.getElementById("page-input");
     const btnPrev    = document.getElementById("btn-prev");
     const btnNext    = document.getElementById("btn-next");
 
-    function populateSuraSelect() {
-        suraSelect.innerHTML = "";
+    const suraList       = document.getElementById("sura-list");
+    const suraFilterInput = document.getElementById("sura-filter");
+
+    function renderSuraList(filter = "") {
+        const q = filter.trim();
+        suraList.innerHTML = "";
+
+        let shown = 0;
         for (let s = 0; s < TOTAL_SURAS; ++s) {
-            const opt = document.createElement("option");
-            opt.value = s;
-            opt.textContent = `${s + 1}. ${suraNames[s]}`;
-            suraSelect.appendChild(opt);
+            const name = suraNames[s] || "";
+            if (q && !name.includes(q) && !String(s + 1).includes(q)) continue;
+            shown++;
+
+            const li = document.createElement("li");
+            li.className = "sura-item";
+            li.dataset.sura = s;
+            li.setAttribute("role", "option");
+
+            const badge = document.createElement("span");
+            badge.className = "sura-badge";
+            badge.textContent = toArabicDigits(s + 1);
+
+            const info = document.createElement("span");
+            info.className = "sura-info";
+
+            const nameEl = document.createElement("span");
+            nameEl.className = "sura-name";
+            nameEl.textContent = name;
+
+            const meta = document.createElement("span");
+            meta.className = "sura-meta";
+            meta.textContent = `${toArabicDigits(suraAyaCount[s] || 0)} آية`;
+
+            info.append(nameEl, meta);
+            li.append(badge, info);
+            suraList.appendChild(li);
         }
+
+        if (!shown) {
+            const empty = document.createElement("li");
+            empty.className = "sura-empty";
+            empty.textContent = "لا توجد نتائج";
+            suraList.appendChild(empty);
+        }
+
+        highlightActiveSura(suraOfPage[globalThis.page]);
+    }
+
+    function highlightActiveSura(sura) {
+        for (const el of suraList.querySelectorAll(".sura-item")) {
+            el.classList.toggle("active", Number(el.dataset.sura) === sura);
+        }
+    }
+
+    function scrollActiveSuraIntoView() {
+        const el = suraList.querySelector(".sura-item.active");
+        if (el) el.scrollIntoView({ block: "center" });
     }
 
     function populateServerSelect() {
@@ -379,9 +427,9 @@ async function main() {
         vp.goto(Math.max(0, Math.min(TOTAL_PAGES - 1, p)));
     }
 
-    function syncToolbar(page) {
+    function syncStatus(page) {
         pageInput.value = page + 1;
-        suraSelect.value = suraOfPage[page];
+        highlightActiveSura(suraOfPage[page]);
         btnPrev.disabled = page <= 0;
         btnNext.disabled = page >= TOTAL_PAGES - 1;
     }
@@ -583,6 +631,7 @@ async function main() {
         label.textContent = audioState.sura != null
             ? `${suraNames[audioState.sura]} ﴿${toArabicDigits(audioState.aya + 1)}﴾`
             : "لم يبدأ التشغيل";
+        label.onclick = () => gotoPlayingAya({ force: true });
 
         const playBtn = document.getElementById("btn-audio-playpause");
         playBtn.classList.toggle("is-playing", playing);
@@ -590,8 +639,15 @@ async function main() {
         playBtn.setAttribute("aria-label", playLabel);
         playBtn.title = playLabel;
 
+        const menuPlayBtn = document.getElementById("btn-menu-audio-playpause");
+        menuPlayBtn.classList.toggle("is-playing", playing);
+        menuPlayBtn.setAttribute("aria-label", playLabel);
+        menuPlayBtn.title = playLabel;
+
         document.getElementById("btn-audio-stop").disabled = audioState.sura == null;
-        document.getElementById("btn-audio").classList.toggle("audio-active", playing);
+        document.getElementById("btn-menu-audio-stop").disabled = audioState.sura == null;
+        document.getElementById("btn-menu").classList.toggle("audio-active", playing);
+        document.getElementById("menu-audio-dot").classList.toggle("active", playing);
     }
 
     // Whether page-navigation should auto-follow the playing ayah. True
@@ -817,6 +873,7 @@ async function main() {
 
     function openPanel(id) {
         clearTimeout(panelCloseTimer);
+        document.getElementById("btn-menu").classList.add("hidden");
         // Switching directly between two panels: snap-hide everything
         // else immediately rather than fading it, only the target panel
         // animates in. Leaving a "closing" panel's hidden attribute off
@@ -847,6 +904,7 @@ async function main() {
     function closeAllPanels() {
         clearTimeout(panelCloseTimer);
         backdrop.classList.remove("open");
+        document.getElementById("btn-menu").classList.remove("hidden");
         for (const p of document.querySelectorAll(".overlay-panel")) {
             p.classList.remove("open");
         }
@@ -908,7 +966,7 @@ async function main() {
     await new Promise(r => requestAnimationFrame(r)); // let the message paint
     buildIndex();
     buildGlobalAyahIndex();
-    populateSuraSelect();
+    renderSuraList();
     populateServerSelect();
     populateReaderSelect();
     document.getElementById("autoadvance-toggle").checked = audioState.autoAdvance;
@@ -934,7 +992,7 @@ async function main() {
             page = Math.max(0, Math.min(TOTAL_PAGES - 1, page));
             globalThis.page = page;
             localStorage["quran-page"] = page;
-            syncToolbar(page);
+            syncStatus(page);
 
             if (programmaticNav) {
                 programmaticNav = false;
@@ -952,13 +1010,23 @@ async function main() {
         if (el) showAya(Number(el.dataset.sura), Number(el.dataset.aya));
     });
 
-    suraSelect.addEventListener("change", () => {
-        vp.goto(firstPageOfSura(Number(suraSelect.value)));
+    suraList.addEventListener("click", e => {
+        const li = e.target.closest(".sura-item");
+        if (!li) return;
+        vp.goto(firstPageOfSura(Number(li.dataset.sura)));
+        closeAllPanels();
+    });
+
+    suraFilterInput.addEventListener("input", () => renderSuraList(suraFilterInput.value));
+
+    document.getElementById("btn-page-go").addEventListener("click", () => {
+        gotoPageInput();
+        closeAllPanels();
     });
 
     pageInput.addEventListener("change", gotoPageInput);
     pageInput.addEventListener("keydown", e => {
-        if (e.key === "Enter") { gotoPageInput(); pageInput.blur(); }
+        if (e.key === "Enter") { gotoPageInput(); pageInput.blur(); closeAllPanels(); }
     });
 
     // auto-selects page number text
@@ -968,9 +1036,32 @@ async function main() {
     btnPrev.addEventListener("click", () => vp.prev());
     btnNext.addEventListener("click", () => vp.next());
 
-    document.getElementById("btn-search").addEventListener("click", () => openPanel("panel-search"));
-    document.getElementById("btn-audio").addEventListener("click", () => openPanel("panel-audio"));
-    document.getElementById("btn-settings").addEventListener("click", () => openPanel("panel-settings"));
+    document.getElementById("btn-menu").addEventListener("click", () => openPanel("panel-menu"));
+
+    for (const btn of document.querySelectorAll(".menu-item[data-target]")) {
+        btn.addEventListener("click", () => {
+            const target = btn.dataset.target;
+            openPanel(target);
+            if (target === "panel-suras") {
+                suraFilterInput.value = "";
+                renderSuraList("");
+                requestAnimationFrame(() => {
+                    suraFilterInput.focus();
+                    scrollActiveSuraIntoView();
+                });
+            } else if (target === "panel-page") {
+                pageInput.focus();
+                pageInput.select();
+            } else if (target === "panel-search") {
+                searchInput.focus();
+            }
+        });
+    }
+
+    for (const btn of document.querySelectorAll("[data-back]")) {
+        btn.addEventListener("click", () => openPanel(btn.dataset.back));
+    }
+
     for (const btn of document.querySelectorAll("[data-close]")) {
         btn.addEventListener("click", closeAllPanels);
     }
@@ -1010,6 +1101,9 @@ async function main() {
     document.getElementById("btn-audio-stop").addEventListener("click", stopAudio);
     document.getElementById("btn-audio-prev").addEventListener("click", () => shiftAya(-1));
     document.getElementById("btn-audio-next").addEventListener("click", () => shiftAya(1));
+
+    document.getElementById("btn-menu-audio-playpause").addEventListener("click", togglePlayPause);
+    document.getElementById("btn-menu-audio-stop").addEventListener("click", stopAudio);
 
     function reloadCurrentAudioSource() {
         // restarts whatever's currently loaded/playing using the (now
