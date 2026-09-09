@@ -94,7 +94,58 @@ async function main() {
             .join("");
     }
 
-    // ---------- sura/page index ----------
+    // Aya circle
+    let ayaMarkerSeq = 0;
+    const ayaSvgTemplate = inlineSvg(await fetch("aya.svg").then(r => r.text()))
+        .replace("<svg ", '<svg class="aya-marker-svg" ');
+
+    function ayaMarkerSvg() {
+        const uid = `aya${ayaMarkerSeq++}`;
+        return ayaSvgTemplate
+            .replace('<g id="header">',  `<g id="${uid}-header">`)
+            .replace('<path id="repu"',  `<path id="${uid}-repu"`)
+            .replace('xlink:href="#header"', `xlink:href="#${uid}-header"`)
+            .replace('xlink:href="#repu"',   `xlink:href="#${uid}-repu"`);
+    }
+
+    // Anything fetched and inlined into page markup has to survive
+    // render(), which splits the body on newlines and appends a <br> to
+    // every line. A <br> inside SVG is foreign content the HTML parser
+    // cannot accept, so it breaks out and closes the <svg> early, spilling
+    // the rest of the artwork into the page as text. Flattening to a
+    // single line avoids that entirely. Comments and <metadata> go too:
+    // the former are pure documentation, the latter is provenance data
+    // some tools inject into .svg files, and neither renders.
+    function inlineSvg(text) {
+        return text
+            .replace(/<\?xml[\s\S]*?\?>/g, "")
+            .replace(/<!--[\s\S]*?-->/g, "")
+            .replace(/<metadata\b[\s\S]*?<\/metadata>/gi, "")
+            .replace(/\s+xmlns:c2pa="[^"]*"/g, "")
+            .replace(/\s*\n\s*/g, " ")
+            .trim();
+    }
+
+    // Sura header
+    let suraHeaderSeq = 0;
+    const suraSvgTemplate = inlineSvg(await fetch("header.svg").then(r => r.text()));
+
+    function escapeHtml(s) {
+        return String(s).replace(/&(?!nbsp;)/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;");
+    }
+
+    function suraHeaderSvg(sura) {
+        const uid = `sura${suraHeaderSeq++}`;
+        return suraSvgTemplate
+            .replace('id="sura-name"',   `id="${uid}-sura-name"`)
+            .replace('id="sura-number"', `id="${uid}-sura-number"`)
+            .replace('id="aya-count"',   `id="${uid}-aya-count"`)
+            .replace("{{sura_name}}",   escapeHtml((suraNames[sura] || "").replace(/&nbsp;/g, " ")))
+            .replace("{{sura_number}}", toArabicDigits(sura + 1))
+            .replace("{{aya_count}}",   toArabicDigits(suraAyaCount[sura] || 0));
+    }
     //
     // No wasm export gives us sura->page or aya->page directly, so this
     // builds the mapping once at startup by reading every page's own
@@ -105,9 +156,11 @@ async function main() {
 
     let suraNames  = new Array(TOTAL_SURAS).fill("");
     let suraOfPage = new Array(TOTAL_PAGES).fill(0);
+    let suraAyaCount = new Array(TOTAL_SURAS).fill(0);
     let pageOfLoc  = new Map();
 
     function buildIndex() {
+        // TODO: add C API and remove this
         for (let p = 0; p < TOTAL_PAGES; ++p) {
             try {
                 const lines = get_page(p, false, false).split("\n");
@@ -125,6 +178,11 @@ async function main() {
                     } else {
                         const aya = Number(m[2]) - 1;
                         pageOfLoc.set((sura << 9) | aya, p);
+                        // this loop already visits every marker of every
+                        // sura, so the highest one seen is the aya count
+                        if (aya + 1 > suraAyaCount[sura]) {
+                            suraAyaCount[sura] = aya + 1;
+                        }
                     }
                 }
             } catch (e) {
@@ -186,7 +244,11 @@ async function main() {
                 }
                 segment = segment.replace("--{", "").replace("}--", "");
                 sura = parseSuraLabel(match[1].replace(/&nbsp;/g, " ")).sura;
-                parts.push(`<span class="sura" data-sura="${sura}">${segment}</span>`);
+                // The band is absolutely positioned over the span, and the
+                // sura name now lives inside it. The original line text is
+                // kept (rendered transparent by .sura) purely as a spacer,
+                // so the span still measures one full line exactly as before.
+                parts.push(`<span class="sura" data-sura="${sura}">${suraHeaderSvg(sura)}${segment}</span>`);
 
             } else if (match[2]) {
                 // Numbered marker: {1}, {2}, etc.
@@ -208,7 +270,8 @@ async function main() {
                     }
                 }
                 const end = regex.lastIndex;
-                const segment = input.slice(lastIndex, end);
+                const segment = input.slice(lastIndex, end)
+                      .replace(/ /g, "&nbsp;");
                 parts.push(`<span class="aya" data-aya="${aya}" data-sura="${sura}">${segment}</span>`);
             }
 
@@ -237,7 +300,8 @@ async function main() {
         body = body.map(l => l[0] == ' ' ? l.replace(/ /g, "&nbsp;") : l);
         body = tag_ayas(body.join("\n"), sura).split("\n");
         body = body.map(l => `${l}<br>`).join("\n");
-        body = body.replace(/\{(\d+)\}/g, (_, num) => `﴿${toArabicDigits(num)}﴾`);
+        body = body.replace(/\{(\d+)\}/g, (_, num) =>
+            `<span class="aya-marker">${ayaMarkerSvg()}<span class="aya-marker-num">${toArabicDigits(num)}</span></span>`);
 
         const lineCount = (body.match(/<br\s*\/?>/gi) || []).length;
         if (lineCount < LINES_PER_PAGE) {
@@ -410,12 +474,12 @@ async function main() {
     const pagerWrap = document.querySelector(".pager-wrap");
 
     function updateFontSize() {
-        const charsW = 30 + 2 * .5; // 30em + 2 * .5em padding left and right
+        const charsW = 28; // same dims as css
         const charsH = 46;
         const rect = pagerWrap.getBoundingClientRect();
         const size = Math.min(
             rect.width  * .99 / charsW,
-            rect.height * .90 / charsH
+            rect.height * .98 / charsH
         );
         output.style.fontSize = size + "px";
     }
@@ -489,6 +553,10 @@ async function main() {
     pageInput.addEventListener("keydown", e => {
         if (e.key === "Enter") { gotoPageInput(); pageInput.blur(); }
     });
+
+    // auto-selects page number text
+    pageInput.addEventListener("focus", () => pageInput.select());
+    pageInput.addEventListener("mouseup", e => e.preventDefault());
 
     btnPrev.addEventListener("click", () => vp.prev());
     btnNext.addEventListener("click", () => vp.next());

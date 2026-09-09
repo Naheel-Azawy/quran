@@ -1,23 +1,34 @@
 /* ---------- Themes ---------- */
 
 :root {
-    --bg:     black;
-    --fg:     white;
-    --bg2:    #222;
-    --radius: .5em;
+    --bg:       black;
+    --fg:       white;
+    --bg2:      #222;
+    --radius:   .5em;
+    --accent:   #b5a642;
+
+    --header:        var(--accent);
+    --aya-ring:      var(--accent);
+    --aya-ring-fill: var(--bg);
+
     --quran-font: 'me_quran';
+    --sura-text-stretch: 1.15;
 }
 
 .light {
-    --bg:  white;
-    --fg:  black;
-    --bg2: #ddd;
+    --bg:     white;
+    --fg:     black;
+    --bg2:    #ddd;
+    --accent: #a08c1f;
+    --aya-ring-fill: var(--fg);
 }
 
 .yellow {
-    --bg:  #F8EBD5;
-    --fg:  black;
-    --bg2: white;
+    --bg:     #F8EBD5;
+    --fg:     black;
+    --bg2:    #f9ddad;
+    --accent: #8a6d1d;
+    --aya-ring-fill: var(--fg);
 }
 
 /* ---------- Fonts ---------- */
@@ -191,7 +202,7 @@ input, button, select {
 #output {
     position:        relative;
     margin:          auto;
-    width:           min(32em, 100%);
+    width:           min(28em, 100%);
     height:          min(46em, 100%);
     max-width:       100%;
     max-height:      100%;
@@ -200,7 +211,7 @@ input, button, select {
     text-align:      justify;
     text-align-last: justify;
     overflow-y:      hidden;
-    transition: border-color .25s ease;
+    transition:      border-color .25s ease;
 }
 
 .header {
@@ -219,6 +230,14 @@ input, button, select {
 .page-text {
     transform-origin: top left;
     transform:        scaleY(1.3);
+    /* The wasm printer already decides where all 16 lines break, and each
+       one ends in an explicit <br>, so nothing here should ever soft-wrap.
+       That was implicit before (tag_ayas turns every space into &nbsp;,
+       leaving no break opportunities), but .aya-marker is an inline-block
+       -- an atomic inline, which adds a break opportunity on each side and
+       so became the only place a line was allowed to break. nowrap removes
+       those; <br> still forces a break, being an explicit one. */
+    white-space:      nowrap;
 }
 
 .page {
@@ -235,35 +254,35 @@ input, button, select {
     position:    relative;
     z-index:     2;
     transition:  .3s;
+    color:       transparent;
 }
 
-/* The ornament used to be a pair of pre-colored PNGs swapped per theme.
-   header.svg lets one file serve every theme: paint a var(--fg) rectangle
-   and cut it to the artwork's shape with a mask, instead of painting the
-   SVG's own (uncontrollable) fill. This has to live on a separate layer
-   behind the text, not on .sura itself, since a CSS mask clips the whole
-   element (text included), not just its background. z-index: -1 keeps it
-   under the sura name within .sura's own stacking context. */
-.sura::before {
-    content:               "";
-    position:              absolute;
+.sura-svg {
+    position:       absolute;
     top: 0; right: 0; bottom: 0; left: 0;
-    z-index:               -1;
-    background-color:      var(--fg);
-    -webkit-mask-image:    url("header.svg");
-    mask-image:            url("header.svg");
-    -webkit-mask-repeat:   no-repeat;
-    mask-repeat:           no-repeat;
-    -webkit-mask-position: center;
-    mask-position:         center;
-    -webkit-mask-size:     100% 100%;
-    mask-size:             100% 100%;
-    /* Force alpha-based masking: the default (luminance) reads header.svg's
-       own fill color as opacity, so a dark fill would mask itself away
-       almost entirely. This makes the shape's alpha the only thing that
-       matters, whatever color the file itself was drawn with. */
-    mask-mode: alpha;
+    width:          100%;
+    height:         100%;
+    pointer-events: none;
 }
+
+.sura-frame { fill: var(--header); }
+
+.sura-svg text {
+    fill: var(--fg);
+    /* The band is stretched to fill the line (preserveAspectRatio="none"),
+       which squashes the text with it. This scales the glyphs back out.
+       The right value depends on how far the line box's ratio is from the
+       artwork's own 8.16:1, so treat it as a knob to eyeball, not a
+       derived constant. */
+    transform:        scaleY(var(--sura-text-stretch));
+    transform-box:    fill-box;
+    transform-origin: center;
+}
+
+.sura-svg-name { font-family: var(--quran-font), serif; }
+/* sans-serif to match the aya marker's digit, and because the Quran font
+   would try to draw its own ornament around numerals */
+.sura-svg-num  { font-family: sans-serif; }
 
 .aya {
     transition: .3s;
@@ -282,6 +301,46 @@ input, button, select {
 .aya.blink {
     animation: aya-blink .5s ease-in-out 3;
 }
+
+/* The marker used to be the font's own ﴿١﴾ ligature, which draws its own
+   circle around the digit; then a CSS mask of aya.svg, which collapsed
+   the whole artwork to one flat silhouette. Now the SVG is inlined by
+   main.js (see AYA_MARKER_SVG) with each shape classed below, so every
+   part can carry its own color and actually recolor per theme instead of
+   being flattened to one. */
+.aya-marker {
+    position:       relative;
+    display:        inline-block;
+    width:          1.4em;
+    height:         1.4em;
+    vertical-align: middle;
+    /* .page-text stretches everything inside it scaleY(1.3) to correct
+       the Quran font's own compressed line metrics. That correction is
+       meant for text glyphs, not this marker's circle/digit, so cancel
+       it back out here -- otherwise the circle renders as an ellipse. */
+    transform: scaleY(calc(1 / 1.3));
+}
+
+.aya-marker-svg {
+    display: block;
+    width:   100%;
+    height:  auto; /* preserves the artwork's own aspect ratio -- no stretch */
+}
+
+.aya-marker-num {
+    position:    absolute;
+    top:         70%;
+    left:        50%;
+    transform:   translate(-50%, -50%);
+    font-family: sans-serif; /* not --quran-font, which would draw its own circle again */
+    font-size:   .6em;
+    color:       var(--fg);
+}
+
+.aya-ring { fill: var(--aya-ring); stroke: var(--aya-ring-fill); }
+.aya-face { fill: var(--bg);       stroke: var(--aya-ring-fill); }
+.aya-dot  { fill: var(--aya-ring-fill); }
+.aya-line { fill: none;            stroke: var(--aya-ring-fill); }
 
 /* ---------- Overlay panels (search / settings / aya) ---------- */
 

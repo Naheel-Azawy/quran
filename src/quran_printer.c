@@ -21,6 +21,8 @@
 #define TATWEEL_RATIO .8
 // Max number of tatweel that can be stacked at a single spot
 #define TATWEEL_MAX_REPEAT 3
+// Tatweel stretching the س of بِسْمِ in the sura-opening basmala
+#define BISMILLAH_TATWEEL 8
 
 static bool has_break_at(int page, int w_count) {
     for (int l = 0; l < 15; ++l) {
@@ -327,6 +329,27 @@ static size_t justify_text(wchar_t *out, wchar_t* text, int target_width,
     return len_tot;
 }
 
+// Stretch the س of بِسْمِ with tatweel, the way the printed mushaf elongates
+// it. Tashkeel belongs on the letter, so the tatweel goes after any marks
+// that follow the seen, matching how justify_line inserts them. Returns the
+// new length; the string is left untouched if there is no room.
+static size_t stretch_bismillah(wchar_t *s, size_t len, size_t size) {
+    static const wchar_t tatweel = L'ـ';
+    size_t i = 0;
+
+    while (i < len && s[i] != L'س') ++i;
+    if (i == len) return len;
+    ++i;
+    while (i < len && quran_is_tashkeel(s[i])) ++i;
+
+    // +1 so the terminator that wmemmove carries along still fits
+    if (len + BISMILLAH_TATWEEL + 1 > size) return len;
+
+    wmemmove(s + i + BISMILLAH_TATWEEL, s + i, len - i + 1);
+    wmemset(s + i, tatweel, BISMILLAH_TATWEEL);
+    return len + BISMILLAH_TATWEEL;
+}
+
 static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
     if (page < 0 || page >= QURAN_PAGES) {
         // The pager asks for the pages around the edges too
@@ -382,6 +405,8 @@ static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
     size_t len;
     len = quran_read_wchar(0, 0, bismillah, quran_read(0, 0, NULL), simple);
     bismillah[len] = '\0';
+    len = stretch_bismillah(bismillah, len,
+                            sizeof(bismillah) / sizeof(bismillah[0]));
 
     int l_count = 0;
     int w_count = 0;
@@ -434,12 +459,8 @@ static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
         len = quran_read(sura, aya, &txt);
         for (size_t i = 0; i < len; ++i) {
             c = (wchar_t) QURAN_TXT_DEC(txt[i]);
-            if (i + 2 < len) {
-                c_next1 = (wchar_t) QURAN_TXT_DEC(txt[i + 1]);
-                c_next2 = (wchar_t) QURAN_TXT_DEC(txt[i + 2]);
-            } else {
-                c_next1 = c_next2 = L'\0';
-            }
+            c_next1 = (i + 1 < len) ? (wchar_t) QURAN_TXT_DEC(txt[i + 1]) : L'\0';
+            c_next2 = (i + 2 < len) ? (wchar_t) QURAN_TXT_DEC(txt[i + 2]) : L'\0';
             if (simple) c = quran_simplify_char(c);
             if (!c) continue;
             if (c == L'۩') --w_count;
@@ -451,11 +472,39 @@ static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
             }
             PPRINT(L"%C", c);
         }
-        NEWL();
-        PPRINT(L"{%d}", aya + 1);
-        NEWL();
+        // A break at the gap before an aya marker is legitimate mid-page:
+        // the marker simply opens the next line, joined by the words that
+        // follow it (e.g. {54} on p7).
+        //
+        // The exception is the last aya on the page. There is nothing after
+        // its marker to share a line with, so a break there would strand
+        // "{n}" alone on an extra line -- and push l_count to 16, tripping
+        // the sura-name hack below into deleting a real line of text. That
+        // happens because a page's trailing break is generated from the last
+        // text word and misses the closing marker, landing one gap early
+        // (e.g. p26, where it is 129 but should be 130). For that case only,
+        // keep the marker's word slot so w_count stays in step with the
+        // table, but carry the break over to after the marker.
+        quran_loc_t loc_next = QURAN_LOC_NEXT(loc);
+        if (loc_next >= loc_next_page) {
+            bool brk = has_break_at(page, w_count);
+            PPRINT(L" ");
+            ++w_count;
+            PPRINT(L"{%d}", aya + 1);
+            if (brk || has_break_at(page, w_count)) {
+                PPRINT(L"\n");
+                ++l_count;
+            } else {
+                PPRINT(L" ");
+            }
+            ++w_count;
+        } else {
+            NEWL();
+            PPRINT(L"{%d}", aya + 1);
+            NEWL();
+        }
 
-        loc = QURAN_LOC_NEXT(loc);
+        loc = loc_next;
     }
 
     if (*(buf - 1) != L'\n') {
