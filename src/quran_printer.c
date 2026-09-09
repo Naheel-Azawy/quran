@@ -463,7 +463,19 @@ static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
             c_next2 = (i + 2 < len) ? (wchar_t) QURAN_TXT_DEC(txt[i + 2]) : L'\0';
             if (simple) c = quran_simplify_char(c);
             if (!c) continue;
-            if (c == L'۩') --w_count;
+
+            // if (c == L'۩') --w_count;
+            // NOTE: ۩ is a token of its own in the breaks table -- it is
+            // preceded by a space, so it consumes a slot like any other
+            // word, and may open a line just as an aya marker can. Rolling
+            // w_count back here made the break before it fire a second time
+            // at the aya-end gap, stranding ۩ alone and pushing {n} onto a
+            // third line; it also shifted every later break by one, leaving
+            // the page's trailing break unreachable and tripping the
+            // sura-name hack below (p453). Note simple mode never reached
+            // the rollback, since ۩ simplifies to 0 and continues out above,
+            // so it always agreed with the table.
+
             if (c ==  L' ' &&
                 // not space then stop sign then space
                 !(c == L' ' && c_next1 !=  L' ' && c_next2 ==  L' ')) {
