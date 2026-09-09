@@ -163,7 +163,6 @@ input, button, select {
     justify-content: center;
     border:          none;
     background:      transparent;
-    box-shadow:      0 .3em 1.2em rgba(0, 0, 0, .35);
     cursor:          pointer;
     opacity:         1;
     transition:      transform .15s ease, box-shadow .15s ease, opacity .18s ease,
@@ -240,6 +239,54 @@ input, button, select {
     text-align-last: justify;
     overflow-y:      hidden;
     transition:      border-color .25s ease;
+}
+
+/* Book/spread mode: two pages shown side by side. Toggled by main.js
+   once the pager area is wide (and short) enough to fit both legibly;
+   see computePagesPerView(). No width transition here on purpose: an
+   animated resize would keep changing size out from under the pager's
+   own offset math for its (fixed) transition duration, showing a
+   mis-aligned page until the next swipe re-measured things. */
+#output.two-page {
+    width: min(56em, 100%);
+}
+
+/* Direct children of the pager's own internal flex row -- a lone .page
+   in normal mode, or a .vp-slide spread wrapper in book mode -- always
+   exactly fill it. This is deliberately plain CSS rather than a pixel
+   width measured once in JS and written into an inline style: a snapshot
+   like that goes stale the moment the container's box changes after the
+   fact (a resize, a still-animating transition, a mobile browser's
+   chrome collapsing after load...), leaving old slides sized for a box
+   that no longer exists until the next swipe re-measures them. Percentage
+   sizing has nothing to go stale -- it re-resolves on every layout pass. */
+.vp-container > * {
+    flex:       0 0 100%;
+    width:      100%;
+    height:     100%;
+    min-width:  0;
+    box-sizing: border-box;
+}
+
+/* Wraps the two pages of a spread (itself one of the .vp-container's
+   direct children, sized by the rule above). Direction is inherited from
+   #output, so the first (lower-numbered, earlier-read) page lands on the
+   right and the second on the left, matching how an open Mushaf reads --
+   no extra ordering logic needed here. */
+.vp-slide {
+    display: flex;
+    width:   100%;
+    height:  100%;
+}
+
+.vp-slide .page {
+    /* fixed at half width rather than flex-growing, so a short last
+       spread (an odd total page count) leaves a blank facing half
+       instead of stretching its lone page across the whole spread */
+    flex:      0 0 50%;
+    width:     50%;
+    height:    100%;
+    min-width: 0;
 }
 
 .header {

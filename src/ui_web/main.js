@@ -427,11 +427,11 @@ async function main() {
         vp.goto(Math.max(0, Math.min(TOTAL_PAGES - 1, p)));
     }
 
-    function syncStatus(page) {
+    function syncStatus(page, nav) {
         pageInput.value = page + 1;
         highlightActiveSura(suraOfPage[page]);
-        btnPrev.disabled = page <= 0;
-        btnNext.disabled = page >= TOTAL_PAGES - 1;
+        btnPrev.disabled = !nav.hasPrev;
+        btnNext.disabled = !nav.hasNext;
     }
 
     // ---------- search ----------
@@ -665,7 +665,7 @@ async function main() {
         const force = !!opts.force;
         const targetPage = pageOfSuraAya(audioState.sura, audioState.aya);
 
-        if (targetPage === globalThis.page) {
+        if (vp.isVisible(targetPage)) {
             // already here -- (re)join auto-following
             followPlayback = true;
             applyPlayingHighlight();
@@ -920,8 +920,26 @@ async function main() {
 
     const pagerWrap = document.querySelector(".pager-wrap");
 
+    // Single mushaf page's natural aspect ratio, in the same "chars" units
+    // updateFontSize uses below (28 chars wide, 46 tall). Book mode needs
+    // roughly double that width for the same height, so this doubles as
+    // the threshold for switching layouts: the available box has to be at
+    // least that wide *relative to its height* (with a little slack so
+    // the mode doesn't flip back and forth right at the edge), and wide
+    // enough in absolute terms that neither half-page becomes illegible.
+    const PAGE_ASPECT = 28 / 46;
+
+    function computePagesPerView() {
+        const rect = pagerWrap.getBoundingClientRect();
+        if (rect.height <= 0) return 1;
+        const wide = rect.width / rect.height >= PAGE_ASPECT * 2 * .9;
+        return (wide && rect.width >= 700) ? 2 : 1;
+    }
+
+    let pagesPerView = computePagesPerView();
+
     function updateFontSize() {
-        const charsW = 28; // same dims as css
+        const charsW = pagesPerView === 2 ? 56 : 28; // same dims as css
         const charsH = 46;
         const rect = pagerWrap.getBoundingClientRect();
         const size = Math.min(
@@ -974,6 +992,7 @@ async function main() {
 
     theme_set(localStorage["quran-theme"] || "black");
     handle_pwa();
+    output.classList.toggle("two-page", pagesPerView === 2);
     updateFontSize();
     await loadFont();
     document.getElementById("simple-toggle").checked = globalThis.simple;
@@ -983,16 +1002,17 @@ async function main() {
         parent:       output,
         initPage:     globalThis.page,
         totalPages:   TOTAL_PAGES,
+        pagesPerView: pagesPerView,
         pageRenderer: index => {
             const div = render(index);
             requestAnimationFrame(applyPlayingHighlight);
             return div;
         },
-        onChange: page => {
+        onChange: (page, nav) => {
             page = Math.max(0, Math.min(TOTAL_PAGES - 1, page));
             globalThis.page = page;
             localStorage["quran-page"] = page;
-            syncStatus(page);
+            syncStatus(page, nav);
 
             if (programmaticNav) {
                 programmaticNav = false;
@@ -1000,7 +1020,7 @@ async function main() {
                 // a real user navigation (swipe, prev/next page, sura
                 // select, page jump, search result...): follow only if
                 // it happens to land them back on the playing page
-                followPlayback = (page === pageOfSuraAya(audioState.sura, audioState.aya));
+                followPlayback = vp.isVisible(pageOfSuraAya(audioState.sura, audioState.aya));
             }
         },
     });
@@ -1154,6 +1174,12 @@ async function main() {
     window.addEventListener("resize", () => {
         if (document.activeElement && document.activeElement.id == "page-input") {
             return;
+        }
+        const newPagesPerView = computePagesPerView();
+        if (newPagesPerView !== pagesPerView) {
+            pagesPerView = newPagesPerView;
+            output.classList.toggle("two-page", pagesPerView === 2);
+            vp.setPagesPerView(pagesPerView);
         }
         updateFontSize();
         vp.reload();

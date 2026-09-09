@@ -7,6 +7,7 @@ class ViewPager {
             totalPages      = Infinity,
             initPage        = 0,
             transitionSpeed = 200,
+            pagesPerView    = 1,
         } = opts;
 
         if (!parent)       throw Error("parent must be set");
@@ -17,15 +18,26 @@ class ViewPager {
         this.renderPageUser  = pageRenderer;
         this.onChange        = onChange;
         this.totalPages      = totalPages;
-        this.currentPage     = initPage;
         this.transitionSpeed = transitionSpeed;
         this.threshold       = 50; // swipe sensitivity
         this.rtl = document.defaultView
             .getComputedStyle(parent, null)
             .getPropertyValue("direction") == "rtl";
 
+        // Paging is always done in units of "groups" -- a group is one
+        // slide of the pager and holds `pagesPerView` real pages side by
+        // side (book/spread mode) or just 1 (the normal, single-page
+        // mode). Everything below (dragging, preloading neighbours,
+        // cleanup) operates on group indices; only the public API
+        // (goto/onChange) still talks in absolute page numbers, so
+        // callers never need to know which mode is active.
+        this.pagesPerView = Math.max(1, pagesPerView);
+        this.totalGroups  = this._groupCount();
+        this.currentGroup = this._groupOf(initPage);
+        this.currentPage  = this.currentGroup * this.pagesPerView;
+
         // Vars
-        this.renderedPages = {};
+        this.renderedPages = {}; // keyed by group index, not page number
         this.startX        = 0;
         this.startI        = null;
         this.isDragging    = false;
@@ -35,6 +47,7 @@ class ViewPager {
         this.lastChange    = Date.now();
 
         this.container = document.createElement("div");
+        this.container.className = "vp-container";
         this.parent.appendChild(this.container);
         this.container.style.width = this.container.style.height = "100%";
         this.container.style.display = "flex";
@@ -56,7 +69,47 @@ class ViewPager {
         });
 
         this._updatePager();
-        this.onChange(this.currentPage);
+        this.onChange(this.currentPage, this._navState());
+    }
+
+    // ---------- page/group index helpers ----------
+
+    _groupOf(page) {
+        return Math.floor(page / this.pagesPerView);
+    }
+
+    _groupCount() {
+        return this.totalPages === Infinity
+            ? Infinity
+            : Math.ceil(this.totalPages / this.pagesPerView);
+    }
+
+    // Real (absolute) page numbers making up group g, in ascending
+    // (reading) order; the last group may be short a page if totalPages
+    // isn't a multiple of pagesPerView.
+    _groupPages(g) {
+        const start = g * this.pagesPerView;
+        const pages = [];
+        for (let k = 0; k < this.pagesPerView; ++k) {
+            const p = start + k;
+            if (this.totalPages !== Infinity && p >= this.totalPages) break;
+            pages.push(p);
+        }
+        return pages;
+    }
+
+    _navState() {
+        return {
+            hasPrev: this.currentGroup > 0,
+            hasNext: this.currentGroup < this.totalGroups - 1,
+        };
+    }
+
+    // Whether `page` is part of the group/spread currently on screen --
+    // in book mode that's true for both the right and left page, not just
+    // the group's anchor (first) page.
+    isVisible(page) {
+        return this._groupOf(page) === this.currentGroup;
     }
 
     _touchStart(e) {
@@ -91,20 +144,21 @@ class ViewPager {
         if (this.rtl) deltaX *= -1;
 
         if (this.rtl) {
-            if (deltaX < -this.threshold && this.currentPage < this.totalPages - 1) {
+            if (deltaX < -this.threshold && this.currentGroup < this.totalGroups - 1) {
                 diff = +1;
-            } else if (deltaX > this.threshold && this.currentPage > 0) {
+            } else if (deltaX > this.threshold && this.currentGroup > 0) {
                 diff = -1;
             }
         } else {
-            if (deltaX < -this.threshold && this.currentPage > 0) {
+            if (deltaX < -this.threshold && this.currentGroup > 0) {
                 diff = -1;
             } else if (deltaX > this.threshold &&
-                       this.currentPage < this.totalPages - 1) {
+                       this.currentGroup < this.totalGroups - 1) {
                 diff = +1;
             }
         }
-        this.currentPage += diff;
+        this.currentGroup += diff;
+        this.currentPage  = this.currentGroup * this.pagesPerView;
         endI += diff;
 
         // Re-enable transition before snapping into place
@@ -112,7 +166,7 @@ class ViewPager {
             this.container.style.transition = `transform ${this.transitionSpeed}ms ease`;
             this._updatePager(endI);
             if (pageBak != this.currentPage) {
-                this.onChange(this.currentPage);
+                this.onChange(this.currentPage, this._navState());
             }
         });
     }
@@ -120,19 +174,24 @@ class ViewPager {
     _updatePager(i=null, animate=true) {
         // Position and move container
         if (this.basic) {
-            this._renderPage(this.currentPage);
+            this._renderGroup(this.currentGroup);
         } else {
             this.locked = true;
-            this._renderPage(this.currentPage);
-            if (this.currentPage >                   0) this._renderPage(this.currentPage - 1);
-            if (this.currentPage < this.totalPages - 1) this._renderPage(this.currentPage + 1);
+            this._renderGroup(this.currentGroup);
+            if (this.currentGroup >                    0) this._renderGroup(this.currentGroup - 1);
+            if (this.currentGroup < this.totalGroups - 1) this._renderGroup(this.currentGroup + 1);
             // NOTE: possible improvement: when moving in one direction quickly, load more
-            //       pages in advance in that direction
+            //       groups in advance in that direction
         }
-        for (let child of this.container.children) {
-            child.style.minHeight = "100%";
-            child.style.minWidth  = this.parent.getBoundingClientRect().width + "px";
-        }
+        // Slide sizing (each one exactly filling the container) is pure
+        // CSS (see .vp-container > * in style.css) rather than a pixel
+        // value measured here and baked in -- that used to go stale
+        // whenever the container's box changed after the fact (a resize,
+        // a CSS transition still mid-flight, a mobile browser's chrome
+        // collapsing after load...), leaving old slides sized for a box
+        // that no longer existed until the next navigation re-measured
+        // them. CSS tracks the live box on every frame, so there's
+        // nothing to go stale.
         if (this.basic) return;
         if (i == null) i = this._translateIndex();
         this._translateToIndex(i, animate);
@@ -140,32 +199,51 @@ class ViewPager {
         setTimeout(() => that._cleanupPages(), this.transitionSpeed + 10);
     }
 
-    _renderPage(index) {
+    // Builds one slide: a lone page in normal mode, or a flex row holding
+    // `pagesPerView` pages (in ascending/reading order) in book mode. The
+    // slide inherits the pager's own RTL direction, so the first (lowest-
+    // numbered, earliest-read) page naturally lands on the right and
+    // later pages continue to its left -- exactly how an open Mushaf
+    // reads, with no extra bookkeeping needed here.
+    _buildSlide(group) {
+        const pages = this._groupPages(group);
+        if (this.pagesPerView === 1) {
+            return this.renderPageUser(pages[0]);
+        }
+        const slide = document.createElement("div");
+        slide.className = "vp-slide";
+        for (const p of pages) {
+            slide.appendChild(this.renderPageUser(p));
+        }
+        return slide;
+    }
+
+    _renderGroup(group) {
         if (this.basic) {
-            const page = this.renderPageUser(index);
+            const slide = this._buildSlide(group);
             this.container.innerHTML = "";
-            this.container.appendChild(page);
+            this.container.appendChild(slide);
         } else {
-            if (this.renderedPages[index]) return;
-            const page = this.renderPageUser(index);
-            this.container.appendChild(page);
-            this.renderedPages[index] = page;
+            if (this.renderedPages[group]) return;
+            const slide = this._buildSlide(group);
+            this.container.appendChild(slide);
+            this.renderedPages[group] = slide;
         }
     }
 
     _cleanupPages() {
         if (this.basic) return;
         const keep = [];
-        if (this.currentPage > 0) keep.push(this.currentPage - 1);
-        keep.push(this.currentPage);
-        if (this.currentPage < this.totalPages - 1) keep.push(this.currentPage + 1);
+        if (this.currentGroup > 0) keep.push(this.currentGroup - 1);
+        keep.push(this.currentGroup);
+        if (this.currentGroup < this.totalGroups - 1) keep.push(this.currentGroup + 1);
         this.container.innerHTML = "";
-        for (let p in this.renderedPages) {
-            p = Number(p);
-            if (!keep.includes(p)) {
-                delete this.renderedPages[p];
+        for (let g in this.renderedPages) {
+            g = Number(g);
+            if (!keep.includes(g)) {
+                delete this.renderedPages[g];
             } else {
-                this.container.appendChild(this.renderedPages[p]);
+                this.container.appendChild(this.renderedPages[g]);
             }
         }
         this._translateToIndex(this._translateIndex(), false);
@@ -200,10 +278,10 @@ class ViewPager {
 
     _translateIndex() {
         if (this.basic) return 0;
-        const pages = Object.keys(this.renderedPages);
+        const groups = Object.keys(this.renderedPages);
         let i;
-        for (i = 0; i < pages.length; ++i) {
-            if (pages[i] == this.currentPage) {
+        for (i = 0; i < groups.length; ++i) {
+            if (groups[i] == this.currentGroup) {
                 break;
             }
         }
@@ -211,25 +289,33 @@ class ViewPager {
     }
 
     next() {
-        this.goto(this.currentPage + 1);
+        this._gotoGroup(this.currentGroup + 1);
     }
 
     prev() {
-        this.goto(this.currentPage - 1);
+        this._gotoGroup(this.currentGroup - 1);
     }
 
+    // Public API stays page-based: callers pass/receive absolute page
+    // numbers and never need to know the current pagesPerView.
     goto(page) {
         page = Number(page);
+        if (page < 0 || page >= this.totalPages) return;
+        this._gotoGroup(this._groupOf(page));
+    }
+
+    _gotoGroup(group) {
         if (this.locked ||
-            page == this.currentPage ||
-            page < 0 || page >= this.totalPages) {
+            group == this.currentGroup ||
+            group < 0 || group >= this.totalGroups) {
             return;
         }
-        const i = page > this.currentPage ?
+        const i = group > this.currentGroup ?
               Object.keys(this.renderedPages).length - 1 : 0;
-        this.currentPage = page;
+        this.currentGroup = group;
+        this.currentPage  = group * this.pagesPerView;
         this._updatePager(i);
-        this.onChange(this.currentPage);
+        this.onChange(this.currentPage, this._navState());
         this.lastChange = Date.now();
     }
 
@@ -238,6 +324,25 @@ class ViewPager {
             delete this.renderedPages[p];
         }
         this._updatePager();
+    }
+
+    // Switches between normal (1 page) and book/spread (N pages) mode in
+    // place, re-anchoring on whatever page was on the right/first side of
+    // the current view. Only updates bookkeeping and clears the stale
+    // DOM -- callers are expected to follow up with reload() (or resize
+    // already does its own reload() right after, so a resize-triggered
+    // mode switch doesn't render twice).
+    setPagesPerView(n) {
+        n = Math.max(1, n);
+        if (n === this.pagesPerView) return;
+        const anchorPage = this.currentPage;
+        this.pagesPerView = n;
+        this.totalGroups  = this._groupCount();
+        this.currentGroup = this._groupOf(anchorPage);
+        this.currentPage  = this.currentGroup * this.pagesPerView;
+        for (const g in this.renderedPages) delete this.renderedPages[g];
+        this.container.innerHTML = "";
+        this.onChange(this.currentPage, this._navState());
     }
 
     static example() {
