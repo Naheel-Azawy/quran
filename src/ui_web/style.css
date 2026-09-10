@@ -661,6 +661,78 @@ input, button, select {
     opacity:    .7;
 }
 
+/* ---------- Edition picker (categorized by language + recents) ---------- */
+
+.edition-picker-list {
+    flex:       1 1 auto;
+    margin:     0;
+    padding:    0 0 .5em;
+    overflow-y: auto;
+}
+
+.edition-section-header {
+    position:      sticky;
+    top:           0;
+    z-index:       1;
+    padding:       .5em .8em;
+    background:    var(--bg);
+    color:         var(--accent);
+    font-size:     .8em;
+    font-weight:   bold;
+    opacity:       .9;
+    border-bottom: 1px solid var(--bg2);
+}
+
+.edition-item {
+    display:       flex;
+    align-items:   center;
+    justify-content: space-between;
+    gap:           .8em;
+    width:         100%;
+    padding:       .65em .8em;
+    background:    transparent;
+    border:        none;
+    border-top:    1px solid var(--bg2);
+    cursor:        pointer;
+    text-align:    right;
+    font:          inherit;
+    color:         var(--fg);
+    transition:    background-color .15s ease, color .15s ease;
+}
+
+.edition-item:first-child,
+.edition-section-header + .edition-item {
+    border-top: none;
+}
+
+.edition-item:hover {
+    background: var(--bg2);
+}
+
+.edition-item.active {
+    background: var(--accent);
+    color:      var(--bg);
+}
+
+.edition-item-name {
+    flex:      1 1 auto;
+    min-width: 0;
+    overflow:  hidden;
+    text-overflow: ellipsis;
+}
+
+.edition-item-lang {
+    flex:      none;
+    font-size: .75em;
+    opacity:   .75;
+}
+
+.edition-picker-status {
+    padding:    1.2em .8em;
+    text-align: center;
+    opacity:    .7;
+}
+
 /* ---------- Jump to page ---------- */
 
 .page-jump-body {
@@ -862,12 +934,10 @@ input, button, select {
 }
 
 .aya-detail-text {
-    margin:     0;
-    padding:    .8em;
-    overflow-y: auto;
-    direction:  rtl;
-    text-align: justify;
-    font-size:  1.3em;
+    margin:      0;
+    direction:   rtl;
+    text-align:  justify;
+    font-size:   1.3em;
     line-height: 1.8;
 }
 
@@ -930,6 +1000,269 @@ input, button, select {
     background:    var(--accent);
     color:         var(--bg);
     border-radius: .2em;
+}
+
+/* ---------- Aya panel: edition picker + single scroll area ---------- */
+
+.aya-edition-row {
+    flex:    0 0 auto;
+    display: flex;
+    gap:     .5em;
+    padding: .6em .8em;
+    border-bottom: 1px solid var(--bg2);
+}
+
+/* The settings panel's and the aya panel's edition pickers are both
+   buttons styled to look like a <select>, but they open the categorized
+   edition-picker panel instead of a native dropdown. */
+.edition-field {
+    flex:            1 1 auto;
+    min-width:       0;
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    gap:             .5em;
+    padding:         .5em .6em;
+    cursor:          pointer;
+    text-align:      right;
+}
+
+.edition-field-label {
+    flex:      1 1 auto;
+    min-width: 0;
+    overflow:  hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.edition-field-chevron {
+    flex:    none;
+    opacity: .7;
+}
+
+/* The one and only scroll container for panel-aya's body: the aya text
+   and (if an edition is picked) the tafsir/translation both live in here,
+   one after another, so there's never more than a single scrollbar. */
+.aya-content {
+    flex:       1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding:    .8em;
+}
+
+.tafsir-section {
+    margin-top: 1em;
+}
+
+.tafsir-divider {
+    border-top:    1px solid var(--bg2);
+    margin-bottom: 1em;
+}
+
+.tafsir-content {
+    white-space: pre-line;
+    font-size:   1.05em;
+    line-height: 1.7;
+}
+
+.tafsir-content.tafsir-loading {
+    opacity: .6;
+}
+
+.aya-nav {
+    flex:            0 0 auto;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    gap:             1em;
+    padding:         .6em;
+    border-top:      1px solid var(--bg2);
+    direction:       ltr;
+}
+
+.aya-nav-label {
+    min-width:  3.5em;
+    text-align: center;
+    opacity:    .75;
+    font-size:  .9em;
+}
+
+/* ---------- Tafsir settings panel ---------- */
+
+.link-btn {
+    display:     inline-flex;
+    align-items: center;
+    gap:         .4em;
+    background:  transparent;
+    border:      none;
+    color:       var(--accent);
+    cursor:      pointer;
+    font:        inherit;
+    padding:     .3em;
+}
+
+.link-btn:hover {
+    text-decoration: underline;
+}
+
+.tafsir-add-server-row {
+    padding: .2em .8em .4em;
+}
+
+.tafsir-add-server-form {
+    display:        flex;
+    flex-direction: column;
+    gap:            .5em;
+    padding:        .3em .8em .9em;
+    border-bottom:  1px solid var(--bg2);
+}
+
+.tafsir-add-server-form input {
+    padding: .5em;
+}
+
+.tafsir-add-server-actions {
+    display:         flex;
+    justify-content: flex-end;
+    gap:             .5em;
+}
+
+.btn-secondary {
+    flex:          none;
+    padding:       .6em 1.2em;
+    background:    transparent;
+    color:         var(--fg);
+    border:        1px solid var(--fg);
+    border-radius: var(--radius);
+    cursor:        pointer;
+    transition:    background-color .15s ease, transform .1s ease;
+}
+
+.btn-secondary:hover  { background: var(--bg2); }
+.btn-secondary:active { transform: scale(.96); }
+
+.btn-danger {
+    flex:          none;
+    padding:       .5em 1em;
+    background:    transparent;
+    color:         #c0392b;
+    border:        1px solid #c0392b;
+    border-radius: var(--radius);
+    cursor:        pointer;
+    transition:    background-color .15s ease, transform .1s ease;
+}
+
+.btn-danger:hover  { background: rgba(192, 57, 43, .12); }
+.btn-danger:active { transform: scale(.96); }
+
+.tafsir-hint {
+    margin:     0;
+    padding:    .8em;
+    font-size:  .85em;
+    opacity:    .65;
+    text-align: center;
+}
+
+/* ---------- External-server consent dialog ---------- */
+
+.consent-backdrop {
+    position:   fixed;
+    inset:      0;
+    z-index:    20;
+    background: rgba(0, 0, 0, .55);
+    opacity:    0;
+    pointer-events: none;
+    transition: opacity .18s ease;
+}
+
+.consent-backdrop.open {
+    opacity:        1;
+    pointer-events: auto;
+}
+
+.consent-dialog {
+    position:   fixed;
+    z-index:    21;
+    top:        50%;
+    left:       50%;
+    width:      min(24em, 90vw);
+    max-height: 80vh;
+    display:    flex;
+    flex-direction: column;
+    background: var(--bg);
+    border:     1px solid var(--fg);
+    border-radius: var(--radius);
+    box-shadow: 0 .5em 2em rgba(0, 0, 0, .45);
+    overflow:   hidden;
+    opacity:    0;
+    transform:  translate(-50%, -50%) scale(.95);
+    transition: opacity .18s ease, transform .18s ease,
+                background-color .25s ease, border-color .25s ease;
+}
+
+.consent-dialog[hidden] {
+    display: none;
+}
+
+.consent-dialog.open {
+    opacity:   1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.consent-body {
+    padding: 1em;
+}
+
+.consent-body p {
+    margin: 0 0 .6em;
+}
+
+.consent-body p:last-child {
+    margin-bottom: 0;
+}
+
+.consent-server-name {
+    font-weight: bold;
+    color:       var(--accent);
+}
+
+.consent-url {
+    font-size:     .85em;
+    opacity:       .75;
+    word-break:    break-all;
+    text-align:    left;
+}
+
+.consent-actions {
+    display:    flex;
+    gap:        .5em;
+    padding:    .8em;
+    border-top: 1px solid var(--bg2);
+}
+
+.consent-actions button {
+    flex: 1 1 0;
+}
+
+@media (max-width: 480px) {
+    .consent-dialog {
+        top:      auto;
+        bottom:   0;
+        left:     0;
+        width:    99%;
+        max-height: 85vh;
+        border-radius: var(--radius) var(--radius) 0 0;
+        border-bottom: none;
+        transform: translateY(100%);
+    }
+
+    .consent-dialog.open {
+        transform: translateY(0);
+    }
+
+    .consent-actions {
+        flex-direction: column;
+    }
 }
 
 /* ---------- Narrow phones (bottom-sheet panels) ---------- */

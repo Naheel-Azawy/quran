@@ -41,6 +41,25 @@
 
         <div id="overlay-backdrop" hidden></div>
 
+        <!-- ---------- external-server consent dialog (sits above everything else) ---------- -->
+
+        <div id="consent-backdrop" class="consent-backdrop" hidden></div>
+        <section id="panel-consent" class="consent-dialog" hidden role="alertdialog" aria-labelledby="consent-title">
+            <div class="panel-header">
+                <h2 id="consent-title">الاتصال بخادم خارجي</h2>
+            </div>
+            <div class="consent-body">
+                <p id="consent-message"></p>
+                <p id="consent-server-name" class="consent-server-name"></p>
+                <p id="consent-url" class="consent-url" dir="ltr"></p>
+            </div>
+            <div class="consent-actions">
+                <button id="consent-btn-no" class="btn-secondary">لا</button>
+                <button id="consent-btn-yes" class="btn-secondary">نعم</button>
+                <button id="consent-btn-remember" class="btn-primary">نعم، وتذكر</button>
+            </div>
+        </section>
+
         <!-- ---------- main menu ---------- -->
 
         <section id="panel-menu" class="overlay-panel panel-menu" hidden>
@@ -115,6 +134,17 @@
                             <rect x="5" y="4" width="5" height="16" fill="currentColor"/>
                             <rect x="14" y="4" width="5" height="16" fill="currentColor"/>
                         </svg>
+                    </button>
+                </li>
+                <li>
+                    <button class="menu-item" data-target="panel-tafsir">
+                        <span class="menu-item-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <path d="M4 5.5c2.2-1 5-1 7 .3v13.7c-2-1.3-4.8-1.3-7-.3V5.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M20 5.5c-2.2-1-5-1-7 .3v13.7c2-1.3 4.8-1.3 7-.3V5.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                        <span class="menu-item-label">التفسير والترجمة</span>
                     </button>
                 </li>
                 <li>
@@ -322,6 +352,91 @@
             </div>
         </section>
 
+        <!-- ---------- tafsir / translation settings ---------- -->
+
+        <section id="panel-tafsir" class="overlay-panel" hidden>
+            <div class="panel-header">
+                <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع">
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <h2>التفسير والترجمة</h2>
+                <button class="icon-btn" data-close aria-label="إغلاق">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label" for="tafsir-server-select">الخادم</label>
+                <select id="tafsir-server-select"></select>
+            </div>
+
+            <div class="tafsir-add-server-row">
+                <button id="btn-tafsir-add-server" class="link-btn" type="button">
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    إضافة خادم مخصص
+                </button>
+            </div>
+
+            <div id="tafsir-add-server-form" class="tafsir-add-server-form" hidden>
+                <label class="setting-label" for="tafsir-server-name">اسم الخادم (اختياري)</label>
+                <input id="tafsir-server-name" type="text" placeholder="مثال: خادمي الخاص" autocomplete="off">
+                <label class="setting-label" for="tafsir-server-url">رابط الخادم</label>
+                <input id="tafsir-server-url" type="url" placeholder="https://example.com/tafsir" dir="ltr" autocomplete="off">
+                <div class="tafsir-add-server-actions">
+                    <button id="btn-tafsir-server-cancel" class="btn-secondary" type="button">إلغاء</button>
+                    <button id="btn-tafsir-server-save" class="btn-primary" type="button">إضافة</button>
+                </div>
+            </div>
+
+            <div class="setting-group" id="tafsir-remove-server-group" hidden>
+                <span class="setting-label">هذا خادم مخصص</span>
+                <button id="btn-tafsir-remove-server" class="btn-danger" type="button">حذف الخادم</button>
+            </div>
+
+            <div class="setting-group">
+                <span class="setting-label">الإصدار (تفسير / ترجمة)</span>
+                <button id="tafsir-edition-select" class="edition-field" type="button" aria-haspopup="true">
+                    <span class="edition-field-label">جارٍ التحميل...</span>
+                    <svg class="edition-field-chevron" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                        <polyline points="7,9 12,14 17,9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <p class="tafsir-hint">سيُطلب منك تأكيد الاتصال بالخادم قبل أول طلب لعرض التفسير.</p>
+        </section>
+
+        <!-- ---------- edition picker (categorized by language, shared by the settings panel and the aya panel) ---------- -->
+
+        <section id="panel-edition-picker" class="overlay-panel" hidden>
+            <div class="panel-header">
+                <button class="icon-btn icon-back" id="btn-edition-picker-back" aria-label="رجوع" title="رجوع">
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <polyline points="15,5 8,12 15,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <h2>اختر إصدارًا</h2>
+                <button class="icon-btn" data-close aria-label="إغلاق">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="panel-subheader">
+                <input id="edition-filter" type="search" placeholder="ابحث عن تفسير أو لغة…" autocomplete="off">
+            </div>
+            <div id="edition-picker-list" class="edition-picker-list" role="listbox" aria-label="الإصدارات"></div>
+        </section>
+
         <!-- ---------- aya detail (opened by tapping an aya on the page) ---------- -->
 
         <section id="panel-aya" class="overlay-panel" hidden>
@@ -339,7 +454,49 @@
                     </svg>
                 </button>
             </div>
-            <p id="aya-text" class="aya-detail-text"></p>
+
+            <div class="aya-edition-row">
+                <button id="aya-tafsir-edition" class="edition-field" type="button" aria-haspopup="true">
+                    <span class="edition-field-label">الآية فقط</span>
+                    <svg class="edition-field-chevron" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                        <polyline points="7,9 12,14 17,9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button id="btn-tafsir-settings" class="icon-btn" aria-label="إعدادات التفسير" title="إعدادات التفسير">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <line x1="4" y1="7"  x2="20" y2="7"  stroke="currentColor" stroke-width="2"/>
+                        <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2"/>
+                        <line x1="4" y1="17" x2="20" y2="17" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="8"  cy="7"  r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="16" cy="12" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="10" cy="17" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="aya-content" class="aya-content">
+                <p id="aya-text" class="aya-detail-text"></p>
+                <div id="aya-tafsir-section" class="tafsir-section" hidden>
+                    <div class="tafsir-divider"></div>
+                    <div id="tafsir-content" class="tafsir-content"></div>
+                </div>
+            </div>
+
+            <div class="aya-nav">
+                <button id="btn-aya-prev" class="icon-btn" aria-label="الآية السابقة" title="الآية السابقة">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <polyline points="17,5 9,12 17,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <line x1="6" y1="5" x2="6" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <span id="aya-nav-label" class="aya-nav-label"></span>
+                <button id="btn-aya-next" class="icon-btn" aria-label="الآية التالية" title="الآية التالية">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <polyline points="7,5 15,12 7,19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <line x1="18" y1="5" x2="18" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
         </section>
 
         <script src="wasm_loader.js?v=0.0.3"></script>
