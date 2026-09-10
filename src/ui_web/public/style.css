@@ -38,31 +38,31 @@
 
 @font-face {
     font-family:  'me_quran';
-    src:          url('fonts/me_quran.ttf') format('truetype');
+    src:          url('res/fonts/me_quran.ttf') format('truetype');
     font-display: block;
 }
 
 @font-face {
     font-family:  'kufi';
-    src:          url('fonts/KFGQPC-KufiStyV14.ttf') format('truetype');
+    src:          url('res/fonts/KFGQPC-KufiStyV14.ttf') format('truetype');
     font-display: block;
 }
 
 @font-face {
     font-family:  'uthman';
-    src:          url('fonts/UthmanTN_v2-0.ttf') format('truetype');
+    src:          url('res/fonts/UthmanTN_v2-0.ttf') format('truetype');
     font-display: block;
 }
 
 @font-face {
     font-family:  'jalil';
-    src:          url('fonts/AlJalil_v01.ttf') format('truetype');
+    src:          url('res/fonts/AlJalil_v01.ttf') format('truetype');
     font-display: block;
 }
 
 @font-face {
     font-family:  'amiri';
-    src:          url('fonts/Amiri-Regular.ttf') format('truetype');
+    src:          url('res/fonts/Amiri-Regular.ttf') format('truetype');
     font-display: block;
 }
 

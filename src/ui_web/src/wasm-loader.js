@@ -1,5 +1,5 @@
 /* This is adopted from the emscripten */
-async function loadWasm(wasmPath) {
+export async function loadWasm(wasmPath) {
     var Module = {
         print(...args) {
             console.log(...args);
@@ -168,7 +168,7 @@ async function loadWasm(wasmPath) {
     return instance.exports;
 }
 
-function decodeWchar32(memory, ptr) {
+export function decodeWchar32(memory, ptr) {
     const mem = new Uint32Array(memory.buffer);
     let str = '';
     for (let i = ptr / 4; mem[i] !== 0; i++) {

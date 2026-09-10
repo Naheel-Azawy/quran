@@ -1,4 +1,4 @@
-class ViewPager {
+export default class ViewPager {
     constructor(opts) {
         const {
             parent,

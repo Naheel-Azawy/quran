@@ -1,16 +1,20 @@
-let   cacheName   = VERSION;
+// __CACHE_NAME__ is replaced at build time (see webpack.config.js) with a
+// value derived from the package version and the build timestamp, so
+// every deploy gets its own unique cache name automatically -- no manual
+// version bump required.
+let   cacheName   = "__CACHE_NAME__";
 const title       = "Quran";
 const cacheAssets = [
-    "fonts/me_quran.ttf",
-    "header.svg",
-    "icon.png",
     "index.html",
-    "main.js",
+    "bundle.js",
     "style.css",
-    "manifest.webmanifest",
-    "viewpager.js",
-    "wasm_loader.js",
-    "quran.wasm",
+    "quran.wasm", // built directly into build/web/ by the top-level Makefile
+    "res/fonts/me_quran.ttf",
+    "res/header.svg",
+    "res/aya.svg",
+    "res/icon.png",
+    "res/manifest.webmanifest",
+    "res/editions.json",
 ];
 
 const checkPeriod = 1000 * 60 * 10;
@@ -26,13 +30,17 @@ function millis() {
     return new Date().getTime();
 }
 
+// Always asks the network directly for the version marker -- {cache:
+// "no-store"} bypasses the browser's own HTTP cache, not just this
+// service worker's Cache Storage, so a change in the deployed build is
+// never masked by a stale HTTP-cached copy of "version" itself.
 async function buildDiffer() {
     if ((millis() - lastChecked) < checkPeriod) {
         return false;
     }
     let there;
     try {
-        there = await (await fetch("version")).text();
+        there = await (await fetch("version", { cache: "no-store" })).text();
         lastChecked = millis();
     } catch (e) {
         log("BUILD: failed checking", e);
@@ -47,9 +55,13 @@ async function cacheAll() {
     log(`[Service Worker] Caching all...`);
     const cache = await caches.open(cacheName);
     for (let f of cacheAssets) {
-        const request = new Request(f);
+        // {cache: "reload"} forces a fresh network fetch instead of a
+        // browser-HTTP-cache hit, so a re-cache after a version bump
+        // actually picks up the new files rather than re-storing the old
+        // ones the browser still happens to have cached.
+        const request = new Request(f, { cache: "reload" });
         const response = await fetch(request);
-        cache.put(request, response.clone());
+        cache.put(new Request(f), response.clone());
     }
 }
 
@@ -58,7 +70,7 @@ self.addEventListener("install", (e) => {
     e.waitUntil((async () => {
         const cache = await caches.open(cacheName);
         log("[Service Worker] Caching all: app shell and content");
-        await cache.addAll(cacheAssets);
+        await cacheAll();
     })());
 });
 
@@ -100,7 +112,7 @@ self.addEventListener("fetch", (e) => {
             return await fetch(e.request);
         } else if (uncachable.includes(path)) {
             log(`[Service Worker] will not cache ${path}`);
-            return await fetch(e.request);
+            return await fetch(e.request, { cache: "no-store" });
         } else {
             const r = await caches.match(e.request);
             if (r) {

@@ -60,6 +60,10 @@ uninstall:
 
 # WEB #################################################
 
+# The wasm binary is built straight into build/web/ independently of the
+# webpack build below; the two share that output directory but neither
+# manages the other's files (webpack's `clean` is off for exactly this
+# reason -- see src/ui_web/webpack.config.js).
 build/web/quran.wasm: src/quran_defs.h src/quran_core.h src/quran_core.c \
 	src/quran_printer.h src/quran_printer.c build/lut.c build/data.c
 	mkdir -p build/web
@@ -67,12 +71,17 @@ build/web/quran.wasm: src/quran_defs.h src/quran_core.h src/quran_core.c \
 		build/lut.c build/data.c \
 		-o build/web/quran.wasm
 
-build/web/version:
-	echo $(VERSION) > build/web/version
+src/ui_web/node_modules: src/ui_web/package.json
+	cd src/ui_web && npm install
+	touch src/ui_web/node_modules
 
-build/web/index.html: build/web/quran.wasm src/ui_web/* build/web/version
-	cp -r src/ui_web/* build/web/
-	sed -i 's/VERSION/"'$(VERSION)'"/' build/web/sw.js
+# webpack builds the rest of the web UI (JS bundle, HTML, CSS, manifest,
+# icons, fonts, service worker, and a fresh version marker for it) and
+# writes it all directly into build/web/, alongside quran.wasm above.
+build/web/index.html: build/web/quran.wasm src/ui_web/node_modules \
+		src/ui_web/webpack.config.js \
+		$(shell find src/ui_web/src src/ui_web/public -type f)
+	cd src/ui_web && npm run build
 
 web-serve: web
 	cd build/web && python3 -m http.server 9000
@@ -87,5 +96,6 @@ clean-not-node:
 
 clean: clean-not-node
 	rm -rf node_modules package.json package-lock.json
+	rm -rf src/ui_web/node_modules src/ui_web/package-lock.json
 
-.PHONY: clean clean-not-node install uninstall tty web web-serve
+.PHONY: clean clean-not-node install uninstall tty web web-serve web-push

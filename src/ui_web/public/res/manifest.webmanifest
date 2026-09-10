@@ -16,5 +16,6 @@
     ],
     "name": "Quran",
     "short_name": "Quran",
-    "start_url": "index.html"
+    "start_url": "/index.html",
+    "scope": "/"
 }
