@@ -71,8 +71,8 @@ build/web/quran.wasm: src/quran_defs.h src/quran_core.h src/quran_core.c \
 		build/lut.c build/data.c \
 		-o build/web/quran.wasm
 
-src/ui_web/node_modules: src/ui_web/package.json
-	cd src/ui_web && npm install
+src/ui_web/node_modules: src/ui_web/package.json $(wildcard src/ui_web/package-lock.json)
+	cd src/ui_web && if [ -f package-lock.json ]; then npm ci; else npm install; fi
 	touch src/ui_web/node_modules
 
 # webpack builds the rest of the web UI (JS bundle, HTML, CSS, manifest,
@@ -96,6 +96,6 @@ clean-not-node:
 
 clean: clean-not-node
 	rm -rf node_modules package.json package-lock.json
-	rm -rf src/ui_web/node_modules src/ui_web/package-lock.json
+	rm -rf src/ui_web/node_modules
 
 .PHONY: clean clean-not-node install uninstall tty web web-serve web-push

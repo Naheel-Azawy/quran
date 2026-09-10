@@ -14,7 +14,10 @@ does, in order:
 
 1. Builds `quran.wasm` straight into `build/web/quran.wasm` via `emcc`
    (the Makefile's own rule — nothing here touches this file).
-2. Runs `npm install` in this directory if needed.
+2. Runs `npm ci` in this directory if `package.json`/`package-lock.json`
+   changed (`node_modules` is derived, `package-lock.json` is committed
+   — `npm ci` installs the exact versions it pins, rather than
+   re-resolving and potentially picking up something newer/broken).
 3. Runs `npm run build` here, which invokes webpack. Webpack writes
    `index.html`, `bundle.js`, `style.css`, `sw.js`, `version`, and
    `res/` (manifest, icons, fonts, the tafsir edition list) directly
@@ -29,10 +32,9 @@ You can also run webpack directly from here for iterating on the UI
 `make web`, or copied there manually, for the app to actually load):
 
 ```sh
-npm install
+npm ci
 npm run build       # -> ../../build/web/
-npm start           # dev server on http://localhost:8080
-npm run watch       # rebuild on change, no server
+npm run watch       # rebuild on change, no server (serve build/web/ yourself)
 ```
 
 ## Getting the missing assets

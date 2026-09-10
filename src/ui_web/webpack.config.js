@@ -82,10 +82,5 @@ module.exports = {
         new WriteVersionFilePlugin(),
     ],
 
-    devServer: {
-        static: BUILD_WEB_DIR,
-        port: 8080,
-    },
-
     devtool: "source-map",
 };
