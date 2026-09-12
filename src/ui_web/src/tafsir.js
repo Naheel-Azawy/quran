@@ -1,5 +1,7 @@
 import { ensureServerConsent } from "./consent.js";
-import { openPanel } from "./panels.js";
+import { openPanel, goBackInOverlay } from "./panels.js";
+import { storage, nativeFetchText } from "./native-bridge.js";
+import { t } from "./strings.js";
 
 // Mirrors of the same spa5k/tafsir_api repo -- only the base URL differs,
 // editions/slugs are identical across all of them.
@@ -32,7 +34,7 @@ function tafsirCustomServersStorageKey() { return "quran-tafsir-custom-servers";
 
 function loadCustomTafsirServers() {
     try {
-        const list = JSON.parse(localStorage[tafsirCustomServersStorageKey()] || "[]");
+        const list = JSON.parse(storage.getItem(tafsirCustomServersStorageKey()) || "[]");
         return Array.isArray(list) ? list : [];
     } catch (e) {
         return [];
@@ -40,7 +42,7 @@ function loadCustomTafsirServers() {
 }
 
 function saveCustomTafsirServers(list) {
-    localStorage[tafsirCustomServersStorageKey()] = JSON.stringify(list);
+    storage.setItem(tafsirCustomServersStorageKey(), JSON.stringify(list));
 }
 
 // Merges the built-in mirrors with any servers the user has added; custom
@@ -54,14 +56,15 @@ export function allTafsirServers() {
 }
 
 const initTafsirServers = allTafsirServers();
-const initTafsirServerKey = (localStorage[tafsirServerStorageKey()] in initTafsirServers)
-    ? localStorage[tafsirServerStorageKey()] : Object.keys(TAFSIR_SERVERS)[0];
+const savedTafsirServer = storage.getItem(tafsirServerStorageKey());
+const initTafsirServerKey = (savedTafsirServer in initTafsirServers)
+    ? savedTafsirServer : Object.keys(TAFSIR_SERVERS)[0];
 
 export const tafsirState = {
     server: initTafsirServerKey,
     // left empty until the edition list is fetched; initTafsirEditionDefault()
     // fills this in with the first available edition if nothing was saved before
-    edition: localStorage[tafsirEditionStorageKey()] || "",
+    edition: storage.getItem(tafsirEditionStorageKey()) || "",
 };
 
 function tafsirTextToPlain(html) {
@@ -77,6 +80,20 @@ function tafsirTextToPlain(html) {
         .trim();
 }
 
+// Fetches a URL and normalizes the result to { ok, status, body }, using
+// Android's own HTTP stack (a real Android network request, not a
+// WebView/XHR one) when available, and window.fetch() otherwise.
+async function fetchText(url) {
+    const native = nativeFetchText(url);
+    if (native) return native;
+    try {
+        const res = await fetch(url);
+        return { ok: res.ok, status: res.status, body: await res.text() };
+    } catch (e) {
+        return { ok: false, status: 0, body: "" };
+    }
+}
+
 // Fetches the tafsir/translation text for one ayah, gated behind the
 // user's consent for whichever server is currently selected. Takes an
 // explicit edition (rather than always reading tafsirState.edition) so
@@ -84,7 +101,7 @@ function tafsirTextToPlain(html) {
 export async function fetchTafsirFor(sura, aya, edition) {
     const servers = allTafsirServers();
     const serverInfo = servers[tafsirState.server];
-    if (!serverInfo) return { error: "لم يتم اختيار خادم للتفسير." };
+    if (!serverInfo) return { error: t("tafsir.error.noServer") };
 
     const allowed = await ensureServerConsent(
         "tafsir", tafsirState.server, serverInfo.name, serverInfo.base);
@@ -92,24 +109,26 @@ export async function fetchTafsirFor(sura, aya, edition) {
 
     const url = `${serverInfo.base}/${edition}/${sura + 1}/${aya + 1}.json`;
     try {
-        const res = await fetch(url);
+        const res = await fetchText(url);
         if (res.status === 404) return { text: "" };
-        if (!res.ok) return { error: `تعذر جلب التفسير (${res.status}).` };
-        const data = await res.json();
+        if (!res.ok) return { error: t("tafsir.error.fetchFailed", { status: res.status }) };
+        const data = JSON.parse(res.body);
         const raw = data?.text ?? data?.tafsir ?? data?.content ?? "";
         return { text: tafsirTextToPlain(raw) };
     } catch (e) {
         console.warn("Tafsir fetch failed:", e);
-        return { error: "تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت." };
+        return { error: t("tafsir.error.network") };
     }
 }
 
 // The edition list (slug/name/lang) is self-hosted alongside the app --
 // a shrunk copy of the upstream tafsir_api's own /editions.json, with
 // Arabic-language entries' names pre-translated into Arabic. Being
-// same-origin, listing available tafsirs/translations never needs the
-// external-server consent flow; only fetching a specific ayah's actual
-// tafsir text (from whichever mirror is picked above) does.
+// same-origin (bundled in res/, same as the app shell itself -- inside
+// the APK's assets on Android), listing available tafsirs/translations
+// never needs the external-server consent flow or the native-fetch
+// bridge; only fetching a specific ayah's actual tafsir text (from
+// whichever mirror is picked above) does.
 let tafsirEditionsPromise = null;
 
 function fetchTafsirEditions() {
@@ -151,14 +170,14 @@ function capitalizeLang(lang) {
 }
 
 function editionFieldLabel(slug) {
-    if (!slug) return "الآية فقط";
+    if (!slug) return t("tafsir.ayaOnly");
     const ed = findEdition(slug);
     return ed ? ed.name : slug;
 }
 
 function updateSettingsEditionFieldLabel() {
     document.querySelector("#tafsir-edition-select .edition-field-label").textContent =
-        tafsirState.edition ? editionFieldLabel(tafsirState.edition) : "اختر إصدارًا";
+        tafsirState.edition ? editionFieldLabel(tafsirState.edition) : t("tafsir.chooseEdition");
 }
 
 export function updateAyaEditionFieldLabel() {
@@ -174,7 +193,7 @@ export async function initTafsirEditionDefault() {
     const list = await ensureTafsirEditionsLoaded();
     if (list.length && (!tafsirState.edition || !list.some(ed => ed.slug === tafsirState.edition))) {
         tafsirState.edition = list[0].slug;
-        localStorage[tafsirEditionStorageKey()] = tafsirState.edition;
+        storage.setItem(tafsirEditionStorageKey(), tafsirState.edition);
     }
     updateSettingsEditionFieldLabel();
     updateAyaEditionFieldLabel();
@@ -189,7 +208,7 @@ const MAX_RECENT_EDITIONS = 5;
 
 function loadRecentEditions() {
     try {
-        const list = JSON.parse(localStorage[RECENT_EDITIONS_KEY] || "[]");
+        const list = JSON.parse(storage.getItem(RECENT_EDITIONS_KEY) || "[]");
         return Array.isArray(list) ? list : [];
     } catch (e) {
         return [];
@@ -200,7 +219,7 @@ function rememberEditionUse(slug) {
     if (!slug) return; // "aya only" isn't a real edition -- nothing to remember
     const list = loadRecentEditions().filter(s => s !== slug);
     list.unshift(slug);
-    localStorage[RECENT_EDITIONS_KEY] = JSON.stringify(list.slice(0, MAX_RECENT_EDITIONS));
+    storage.setItem(RECENT_EDITIONS_KEY, JSON.stringify(list.slice(0, MAX_RECENT_EDITIONS)));
 }
 
 // ---------- aya panel edition state ----------
@@ -236,7 +255,7 @@ export async function loadTafsirForShown() {
     const section   = document.getElementById("aya-tafsir-section");
     const contentEl = document.getElementById("tafsir-content");
     section.hidden = false;
-    contentEl.textContent = "جارٍ التحميل...";
+    contentEl.textContent = t("tafsir.loading");
     contentEl.classList.add("tafsir-loading");
 
     const result = await fetchTafsirFor(sura, aya, edition);
@@ -247,21 +266,17 @@ export async function loadTafsirForShown() {
 
     contentEl.classList.remove("tafsir-loading");
     if (result.denied) {
-        contentEl.textContent = "لم تتم الموافقة على الاتصال بالخادم، لذا تعذر عرض التفسير.";
+        contentEl.textContent = t("tafsir.error.consentDenied");
     } else if (result.error) {
         contentEl.textContent = result.error;
     } else {
-        contentEl.textContent = result.text || "لا يوجد تفسير لهذه الآية في هذا الإصدار.";
+        contentEl.textContent = result.text || t("tafsir.empty");
     }
 }
 
 // ---------- edition picker panel (categorized by language + recents) ----------
 
 let editionPickerContext = null; // "settings" | "aya" -- which field opened it
-
-function editionPickerReturnPanel() {
-    return editionPickerContext === "aya" ? "panel-aya" : "panel-tafsir";
-}
 
 function isCurrentPickerSelection(slug) {
     return editionPickerContext === "aya" ? ayaEditionChoice === slug : tafsirState.edition === slug;
@@ -325,7 +340,7 @@ export function renderEditionPickerList(filterText) {
     if (!tafsirEditionsList) {
         const status = document.createElement("p");
         status.className = "edition-picker-status";
-        status.textContent = "جارٍ تحميل قائمة الإصدارات...";
+        status.textContent = t("tafsir.editionsLoading");
         container.appendChild(status);
         ensureTafsirEditionsLoaded().then(() => {
             // only re-render if the picker is still open
@@ -339,7 +354,7 @@ export function renderEditionPickerList(filterText) {
     if (!tafsirEditionsList.length) {
         const status = document.createElement("p");
         status.className = "edition-picker-status";
-        status.textContent = "تعذر تحميل قائمة الإصدارات.";
+        status.textContent = t("tafsir.editionsFailed");
         container.appendChild(status);
         return;
     }
@@ -350,7 +365,7 @@ export function renderEditionPickerList(filterText) {
     // "aya only" is pinned at the very top in the aya panel's context,
     // regardless of any filter text -- it's always a valid choice there
     if (editionPickerContext === "aya" && !q) {
-        container.appendChild(makeEditionItem({ slug: "", name: "الآية فقط", lang: "" }));
+        container.appendChild(makeEditionItem({ slug: "", name: t("tafsir.ayaOnly"), lang: "" }));
         anyShown = true;
     }
 
@@ -359,7 +374,7 @@ export function renderEditionPickerList(filterText) {
             .map(findEdition)
             .filter(Boolean);
         if (recents.length) {
-            container.appendChild(makeEditionSectionHeader("المستخدم مؤخرًا"));
+            container.appendChild(makeEditionSectionHeader(t("tafsir.recentlyUsed")));
             for (const ed of recents) container.appendChild(makeEditionItem(ed, { showLang: true }));
             anyShown = true;
         }
@@ -375,7 +390,7 @@ export function renderEditionPickerList(filterText) {
     if (!anyShown) {
         const status = document.createElement("p");
         status.className = "edition-picker-status";
-        status.textContent = "لا توجد نتائج.";
+        status.textContent = t("tafsir.noResults");
         container.appendChild(status);
     }
 }
@@ -389,27 +404,44 @@ export function openEditionPicker(context) {
     requestAnimationFrame(() => filterInput.focus());
 }
 
-function selectEditionFromPicker(slug) {
+async function selectEditionFromPicker(slug) {
     rememberEditionUse(slug);
 
     if (editionPickerContext === "settings") {
         tafsirState.edition = slug;
-        localStorage[tafsirEditionStorageKey()] = tafsirState.edition;
+        storage.setItem(tafsirEditionStorageKey(), tafsirState.edition);
         updateSettingsEditionFieldLabel();
     } else {
         ayaEditionChoice = slug;
         updateAyaEditionFieldLabel();
         if (ayaEditionChoice) {
             tafsirState.edition = ayaEditionChoice;
-            localStorage[tafsirEditionStorageKey()] = tafsirState.edition;
+            storage.setItem(tafsirEditionStorageKey(), tafsirState.edition);
             updateSettingsEditionFieldLabel();
-            loadTafsirForShown();
+            // Awaited on purpose: fetchTafsirFor() may need to show the
+            // consent dialog, and does so *synchronously* up to its own
+            // first await (a Promise executor runs immediately, before
+            // anything suspends) -- so without this await, goBackInOverlay()
+            // below would run a moment after the consent dialog has
+            // already pushed its own history entry on top of this
+            // picker's, and pop *that* instead of leaving the picker:
+            // the dialog would flash open and immediately get dismissed.
+            // Waiting here means we only navigate back once any consent
+            // interaction (and its own push/pop) has fully settled.
+            await loadTafsirForShown();
         } else {
             document.getElementById("aya-tafsir-section").hidden = true;
         }
     }
 
-    openPanel(editionPickerReturnPanel());
+    // Returning from the picker after a selection is conceptually "go
+    // back to wherever this was opened from", same as tapping the
+    // picker's own back chevron below -- routing both through
+    // goBackInOverlay() (rather than openPanel(editionPickerReturnPanel()))
+    // keeps a subsequent hardware/browser back press from disagreeing
+    // with what just happened here (it would otherwise re-open the
+    // picker instead of, say, closing the aya panel).
+    goBackInOverlay();
 }
 
 export function populateTafsirServerSelect() {
@@ -431,7 +463,7 @@ export function populateTafsirServerSelect() {
 export function bindTafsirUI() {
     document.getElementById("tafsir-server-select").addEventListener("change", e => {
         tafsirState.server = e.target.value;
-        localStorage[tafsirServerStorageKey()] = tafsirState.server;
+        storage.setItem(tafsirServerStorageKey(), tafsirState.server);
         document.getElementById("tafsir-remove-server-group").hidden =
             !allTafsirServers()[tafsirState.server]?.custom;
         loadTafsirForShown();
@@ -442,9 +474,7 @@ export function bindTafsirUI() {
     document.getElementById("tafsir-edition-select").addEventListener("click", () => openEditionPicker("settings"));
     document.getElementById("aya-tafsir-edition").addEventListener("click", () => openEditionPicker("aya"));
 
-    document.getElementById("btn-edition-picker-back").addEventListener("click", () => {
-        openPanel(editionPickerReturnPanel());
-    });
+    document.getElementById("btn-edition-picker-back").addEventListener("click", goBackInOverlay);
 
     document.getElementById("edition-filter").addEventListener("input", e => {
         renderEditionPickerList(e.target.value);
@@ -486,7 +516,7 @@ export function bindTafsirUI() {
         }
 
         tafsirState.server = id;
-        localStorage[tafsirServerStorageKey()] = tafsirState.server;
+        storage.setItem(tafsirServerStorageKey(), tafsirState.server);
         populateTafsirServerSelect();
         closeTafsirAddServerForm();
         loadTafsirForShown();
@@ -496,7 +526,7 @@ export function bindTafsirUI() {
         const list = loadCustomTafsirServers().filter(s => s.id !== tafsirState.server);
         saveCustomTafsirServers(list);
         tafsirState.server = Object.keys(TAFSIR_SERVERS)[0];
-        localStorage[tafsirServerStorageKey()] = tafsirState.server;
+        storage.setItem(tafsirServerStorageKey(), tafsirState.server);
         populateTafsirServerSelect();
         loadTafsirForShown();
     });

@@ -8,6 +8,8 @@ import { loadRenderAssets, render } from "./render.js";
 import ViewPager from "./viewpager.js";
 import { toArabicDigits } from "./text-utils.js";
 import { initConsentDialog } from "./consent.js";
+import { storage } from "./native-bridge.js";
+import { t, applyDocumentLanguage, applyTranslations } from "./strings.js";
 import * as audio from "./audio.js";
 import * as tafsir from "./tafsir.js";
 import { openPanel, theme_set, computePagesPerView, updateFontSize, bindPanelsUI } from "./panels.js";
@@ -28,11 +30,11 @@ async function handle_pwa() {
 }
 
 async function loadFont() {
-    const font = localStorage["quran-font"] || "me_quran";
+    const font = storage.getItem("quran-font") || "me_quran";
     if (document.fonts) {
         await document.fonts.load(`13px "${font}"`);
     }
-    document.getElementById("font-select").value = font;
+    // document.getElementById("font-select").value = font;
     document.documentElement.style.setProperty("--quran-font", `"${font}"`);
 }
 
@@ -80,11 +82,18 @@ function updateAyaPanelContent() {
 let engineRef = null; // set once loadQuranEngine() resolves, read by updateAyaPanelContent
 
 async function main() {
+    // Before anything else -- in particular before ViewPager reads
+    // #output's computed direction, and before injectIcons()/panel
+    // markup might get measured -- so layout never briefly starts in the
+    // wrong direction for the current language.
+    applyDocumentLanguage();
+
     injectIcons();
+    applyTranslations();
     cacheNavigationDom();
 
     const output = document.getElementById("output");
-    output.innerHTML = "<h2>تحميل...</h2>";
+    output.innerHTML = `<h2>${t("app.loading")}</h2>`;
 
     // quran.wasm is built directly into build/web/ by the top-level
     // Makefile's emcc rule (see build/web/quran.wasm), not shipped as a
@@ -97,16 +106,16 @@ async function main() {
 
     // ---------- initial state ----------
 
-    globalThis.page = localStorage["quran-page"] !== undefined
-        ? Number(localStorage["quran-page"]) : 0;
-    globalThis.simple = localStorage["quran-simple"] !== undefined
-        ? localStorage["quran-simple"] == "true" : false;
+    globalThis.page = storage.getItem("quran-page") !== undefined
+        ? Number(storage.getItem("quran-page")) : 0;
+    globalThis.simple = storage.getItem("quran-simple") !== undefined
+        ? storage.getItem("quran-simple") == "true" : false;
 
     tafsir.setAyaProvider(() => ayaShown);
 
     // ---------- build index, then wire everything up ----------
 
-    output.innerHTML = "<h2>تجهيز الفهرس...</h2>";
+    // output.innerHTML = `<h2>${t("app.buildingIndex")}</h2>`;
     await new Promise(r => requestAnimationFrame(r)); // let the message paint
     buildIndex(engine);
     buildGlobalAyahIndex();
@@ -120,7 +129,7 @@ async function main() {
     document.getElementById("autoadvance-toggle").checked = audio.audioState.autoAdvance;
     audio.updateAudioUI();
 
-    theme_set(localStorage["quran-theme"] || "black");
+    theme_set(storage.getItem("quran-theme") || "black");
     handle_pwa();
 
     let pagesPerView = computePagesPerView();
@@ -143,7 +152,7 @@ async function main() {
         onChange: (page, nav) => {
             page = Math.max(0, Math.min(TOTAL_PAGES - 1, page));
             globalThis.page = page;
-            localStorage["quran-page"] = page;
+            storage.setItem("quran-page", page);
             syncStatus(page, nav);
 
             if (!audio.consumeProgrammaticNav() && audio.audioState.sura != null) {
@@ -170,7 +179,7 @@ async function main() {
 
     document.getElementById("simple-toggle").addEventListener("change", e => {
         globalThis.simple = e.target.checked;
-        localStorage["quran-simple"] = globalThis.simple;
+        storage.setItem("quran-simple", globalThis.simple);
         vp.reload();
     });
 

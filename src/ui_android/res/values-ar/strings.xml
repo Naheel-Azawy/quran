@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">القرآن</string>
+    <string name="channel_name">تشغيل الصوت</string>
+    <string name="action_play">تشغيل</string>
+    <string name="action_pause">إيقاف مؤقت</string>
+    <string name="action_next">التالية</string>
+    <string name="action_prev">السابقة</string>
+    <string name="action_stop">إيقاف</string>
+</resources>

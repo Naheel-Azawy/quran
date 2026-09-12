@@ -1,6 +1,7 @@
 import { TOTAL_PAGES, TOTAL_SURAS, suraNames, suraAyaCount, suraOfPage, firstPageOfSura, pageOfSuraAya } from "./quran-index.js";
 import { toArabicDigits } from "./text-utils.js";
 import { closeAllPanels } from "./panels.js";
+import { t, localizeNumber } from "./strings.js";
 
 const MAX_SEARCH_RESULTS  = 50;
 const SEARCH_DEBOUNCE_MS  = 250;
@@ -75,7 +76,7 @@ export function renderSuraList(filter = "") {
 
         const meta = document.createElement("span");
         meta.className = "sura-meta";
-        meta.textContent = `${toArabicDigits(suraAyaCount[s] || 0)} آية`;
+        meta.textContent = t("navigation.ayaCount", { count: localizeNumber(suraAyaCount[s] || 0) });
 
         info.append(nameEl, meta);
         li.append(badge, info);
@@ -85,7 +86,7 @@ export function renderSuraList(filter = "") {
     if (!shown) {
         const empty = document.createElement("li");
         empty.className = "sura-empty";
-        empty.textContent = "لا توجد نتائج";
+        empty.textContent = t("navigation.noResults");
         suraList.appendChild(empty);
     }
 
@@ -137,8 +138,8 @@ function runSearch() {
     const note = document.createElement("li");
     note.className = "result-note";
     note.textContent = matches.length > shown.length
-        ? `أول ${shown.length} من ${matches.length} نتيجة`
-        : `${matches.length} نتيجة`;
+        ? t("navigation.searchResultsTruncated", { shown: localizeNumber(shown.length), total: localizeNumber(matches.length) })
+        : t("navigation.searchResultsCount", { count: localizeNumber(matches.length) });
     searchResults.appendChild(note);
 
     shown.forEach(({ sura, aya }, i) => {

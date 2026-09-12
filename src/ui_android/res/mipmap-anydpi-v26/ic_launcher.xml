@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     API 26+ launcher icon. background/foreground are drawn as separate
+     layers so the OS can mask/animate them (round icons, themed icons,
+     etc.) - ic_launcher_foreground.xml is generated at build time from
+     public/res/ic_base.svg (see the top-level Makefile's ANDROID
+     section); the background is just a flat color rather than a second
+     drawable since the icon art itself has no background of its own.
+
+     Pre-26 devices use res/mipmap-anydpi-v21/ic_launcher.xml instead (a
+     single flat vector with the background baked in), also generated at
+     build time - see tools/gen-legacy-icon.js.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>

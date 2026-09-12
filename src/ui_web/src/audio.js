@@ -1,11 +1,16 @@
 import { suraNames, suraOfPage, globalAyahNumber, stepAya, pageOfSuraAya } from "./quran-index.js";
 import { toArabicDigits } from "./text-utils.js";
 import { ensureServerConsent } from "./consent.js";
+import { storage, getAndroidBridge } from "./native-bridge.js";
+import { createAudioSlot } from "./audio-slot.js";
+import { t } from "./strings.js";
 
 // Two audio sources, each with its own reader-id scheme and URL shape.
 // Both lists are curated to the same set of reciters (by voice, not by
 // id -- the ids differ per server) so switching servers is really just
-// switching *where the same voices come from*.
+// switching *where the same voices come from*. Names are looked up via
+// t() (see strings.js's "reciter.*" keys) rather than hardcoded here, so
+// they follow the UI language like everything else.
 export const SERVERS = {
     cdn: {
         name: "alquran.cloud (cdn.islamic.network)",
@@ -13,15 +18,15 @@ export const SERVERS = {
         // Any other "ar.*" edition id from https://alquran.cloud/cdn
         // works here too; this is just a curated subset.
         readers: [
-            { id: "ar.ajamy",              name: "أحمد بن علي العجمي" },
-            { id: "ar.alafasy",            name: "مشاري راشد العفاسي" },
-            { id: "ar.abdulbasitmurattal", name: "عبد الباسط عبد الصمد (مرتل)" },
-            { id: "ar.abdurrahmaansudais", name: "عبد الرحمن السديس" },
-            { id: "ar.husary",             name: "محمود خليل الحصري" },
-            { id: "ar.minshawi",           name: "محمد صديق المنشاوي" },
-            { id: "ar.hudhaify",           name: "علي بن عبد الرحمن الحذيفي" },
-            { id: "ar.shaatree",           name: "أبو بكر الشاطري" },
-            { id: "ar.mahermuaiqly",       name: "ماهر المعيقلي" },
+            { id: "ar.ajamy",              name: t("reciter.ajamy") },
+            { id: "ar.alafasy",            name: t("reciter.alafasy") },
+            { id: "ar.abdulbasitmurattal", name: t("reciter.abdulbasitmurattal") },
+            { id: "ar.abdurrahmaansudais", name: t("reciter.abdurrahmaansudais") },
+            { id: "ar.husary",             name: t("reciter.husary") },
+            { id: "ar.minshawi",           name: t("reciter.minshawi") },
+            { id: "ar.hudhaify",           name: t("reciter.hudhaify") },
+            { id: "ar.shaatree",           name: t("reciter.shaatree") },
+            { id: "ar.mahermuaiqly",       name: t("reciter.mahermuaiqly") },
         ],
         buildUrl(readerId, sura, aya) {
             return `https://cdn.islamic.network/quran/audio/128/` +
@@ -35,15 +40,15 @@ export const SERVERS = {
         // same reciters as the "cdn" list above, picking each one's
         // 128kbps folder where available.
         readers: [
-            { id: "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net", name: "أحمد بن علي العجمي" },
-            { id: "Alafasy_128kbps",                               name: "مشاري راشد العفاسي" },
-            { id: "Abdul_Basit_Murattal_64kbps",                   name: "عبد الباسط عبد الصمد (مرتل)" },
-            { id: "Abdurrahmaan_As-Sudais_64kbps",                 name: "عبد الرحمن السديس" },
-            { id: "Husary_128kbps",                                name: "محمود خليل الحصري" },
-            { id: "Minshawy_Murattal_128kbps",                     name: "محمد صديق المنشاوي" },
-            { id: "Hudhaify_128kbps",                              name: "علي بن عبد الرحمن الحذيفي" },
-            { id: "Abu_Bakr_Ash-Shaatree_128kbps",                 name: "أبو بكر الشاطري" },
-            { id: "MaherAlMuaiqly128kbps",                         name: "ماهر المعيقلي" },
+            { id: "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net", name: t("reciter.ajamy") },
+            { id: "Alafasy_128kbps",                               name: t("reciter.alafasy") },
+            { id: "Abdul_Basit_Murattal_64kbps",                   name: t("reciter.abdulbasitmurattal") },
+            { id: "Abdurrahmaan_As-Sudais_64kbps",                 name: t("reciter.abdurrahmaansudais") },
+            { id: "Husary_128kbps",                                name: t("reciter.husary") },
+            { id: "Minshawy_Murattal_128kbps",                     name: t("reciter.minshawi") },
+            { id: "Hudhaify_128kbps",                              name: t("reciter.hudhaify") },
+            { id: "Abu_Bakr_Ash-Shaatree_128kbps",                 name: t("reciter.shaatree") },
+            { id: "MaherAlMuaiqly128kbps",                         name: t("reciter.mahermuaiqly") },
         ],
         buildUrl(readerId, sura, aya) {
             const s = String(sura + 1).padStart(3, "0");
@@ -58,18 +63,21 @@ function readerStorageKey(server) {
 }
 
 // Auto-advance no longer jumps straight from one ayah's 'ended' to the
-// next .play() -- that has a hard, audible seam. Instead two <audio>
-// elements are kept: one "active" (playing/paused, whatever the user
-// hears) and one "standby" pre-loaded with the upcoming ayah. As the
-// active one nears its end, both are played simultaneously for
-// CROSSFADE_SEC while their volumes ramp in opposite directions, then
-// the standby becomes active. Manual jumps (prev/next, tapping an aya,
-// switching reader) are hard cuts on purpose -- they're the user
-// explicitly asking for a different place, not a continuation.
+// next .play() -- that has a hard, audible seam. Instead two audio slots
+// are kept: one "active" (playing/paused, whatever the user hears) and
+// one "standby" pre-loaded with the upcoming ayah. As the active one
+// nears its end, both are played simultaneously for CROSSFADE_SEC while
+// their volumes ramp in opposite directions, then the standby becomes
+// active. Manual jumps (prev/next, tapping an aya, switching reader) are
+// hard cuts on purpose -- they're the user explicitly asking for a
+// different place, not a continuation.
+//
+// Each slot is created via createAudioSlot() (see audio-slot.js), which
+// is either a plain <audio> element or, under Android, a proxy backed by
+// a real native MediaPlayer -- everything below is unaware of which.
 const CROSSFADE_SEC = .3;
 
-const slots = [new Audio(), new Audio()];
-slots.forEach(a => { a.preload = "auto"; });
+const slots = [createAudioSlot(), createAudioSlot()];
 let activeIdx      = 0;
 let crossfading    = false;
 let crossfadeTimer = null;
@@ -78,14 +86,16 @@ let queuedNext     = null; // {sura, aya} pre-loaded into the standby slot
 const activeAudio = () => slots[activeIdx];
 const otherAudio  = () => slots[1 - activeIdx];
 
-const initServer = localStorage["quran-server"] in SERVERS
-    ? localStorage["quran-server"] : "everyayah";
+const bridge = getAndroidBridge();
+
+const savedServer = storage.getItem("quran-server");
+const initServer = savedServer in SERVERS ? savedServer : "everyayah";
 
 export const audioState = {
     server:      initServer,
-    reader:      localStorage[readerStorageKey(initServer)] || SERVERS[initServer].defaultReader,
-    autoAdvance: localStorage["quran-autoadvance"] !== undefined
-        ? localStorage["quran-autoadvance"] === "true" : true,
+    reader:      storage.getItem(readerStorageKey(initServer)) || SERVERS[initServer].defaultReader,
+    autoAdvance: storage.getItem("quran-autoadvance") !== undefined
+        ? storage.getItem("quran-autoadvance") === "true" : true,
     sura: null,
     aya:  null,
 };
@@ -143,14 +153,15 @@ export function updateAudioUI() {
     const playing = audioState.sura != null && !activeAudio().paused;
 
     const label = document.getElementById("audio-now-playing");
-    label.textContent = audioState.sura != null
+    const nowPlayingLabel = audioState.sura != null
         ? `${suraNames[audioState.sura]} ﴿${toArabicDigits(audioState.aya + 1)}﴾`
-        : "لم يبدأ التشغيل";
+        : t("audio.nowPlaying.idle");
+    label.textContent = nowPlayingLabel;
     label.onclick = () => gotoPlayingAya({ force: true });
 
     const playBtn = document.getElementById("btn-audio-playpause");
     playBtn.classList.toggle("is-playing", playing);
-    const playLabel = playing ? "إيقاف مؤقت" : "تشغيل";
+    const playLabel = playing ? t("audio.action.pause") : t("audio.action.play");
     playBtn.setAttribute("aria-label", playLabel);
     playBtn.title = playLabel;
 
@@ -163,6 +174,13 @@ export function updateAudioUI() {
     document.getElementById("btn-menu-audio-stop").disabled = audioState.sura == null;
     document.getElementById("btn-menu").classList.toggle("audio-active", playing);
     document.getElementById("menu-audio-dot").classList.toggle("active", playing);
+
+    // Keeps Android's notification/lock-screen surface (a real
+    // media-style notification, not anything drawn in the WebView) in
+    // sync with what's actually playing.
+    if (bridge) {
+        bridge.audioSetNowPlaying(audioState.sura != null ? nowPlayingLabel : "", playing);
+    }
 }
 
 export function gotoPlayingAya(opts = {}) {
@@ -374,6 +392,21 @@ slots.forEach((audio, i) => {
     });
 });
 
+// Android's notification/lock-screen transport buttons (and audio-focus
+// loss, e.g. a phone call coming in) are relayed here from native code
+// rather than reimplementing play/pause/stop/next/prev logic twice --
+// audio.js stays the single source of truth for what "play" etc. means.
+if (bridge) {
+    window.__nativeAudioControl = (cmd) => {
+        switch (cmd) {
+        case "playpause": togglePlayPause(); break;
+        case "stop":      stopAudio();       break;
+        case "next":      shiftAya(1);       break;
+        case "prev":      shiftAya(-1);      break;
+        }
+    };
+}
+
 // ---------- settings UI ----------
 
 export function populateServerSelect() {
@@ -425,8 +458,8 @@ export function bindAudioUI() {
 
     document.getElementById("server-select").addEventListener("change", e => {
         audioState.server = e.target.value;
-        localStorage["quran-server"] = audioState.server;
-        audioState.reader = localStorage[readerStorageKey(audioState.server)]
+        storage.setItem("quran-server", audioState.server);
+        audioState.reader = storage.getItem(readerStorageKey(audioState.server))
             || SERVERS[audioState.server].defaultReader;
         populateReaderSelect();
         reloadCurrentAudioSource();
@@ -434,12 +467,12 @@ export function bindAudioUI() {
 
     document.getElementById("reader-select").addEventListener("change", e => {
         audioState.reader = e.target.value;
-        localStorage[readerStorageKey(audioState.server)] = audioState.reader;
+        storage.setItem(readerStorageKey(audioState.server), audioState.reader);
         reloadCurrentAudioSource();
     });
 
     document.getElementById("autoadvance-toggle").addEventListener("change", e => {
         audioState.autoAdvance = e.target.checked;
-        localStorage["quran-autoadvance"] = audioState.autoAdvance;
+        storage.setItem("quran-autoadvance", audioState.autoAdvance);
     });
 }

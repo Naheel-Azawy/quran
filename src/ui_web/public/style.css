@@ -229,7 +229,7 @@ input, button, select {
 #output {
     position:        relative;
     margin:          auto;
-    width:           min(28em, 100%);
+    width:           min(30em, 100%);
     height:          min(46em, 100%);
     max-width:       100%;
     max-height:      100%;
@@ -304,7 +304,12 @@ input, button, select {
 
 .page-text {
     transform-origin: top left;
-    transform:        scaleY(1.3);
+    /* --quran-line-stretch defaults to 1.3 (this font's own hand-tuned
+       correction for how compressed its natural line metrics are).
+       panels.js sets it to 1.2 instead on Android specifically, since its
+       WebView renders this same font's metrics slightly differently than
+       a desktop browser does at the default value. */
+    transform:        scaleY(var(--quran-line-stretch, 1.3));
     /* The wasm printer already decides where all 16 lines break, and each
        one ends in an explicit <br>, so nothing here should ever soft-wrap.
        That was implicit before (tag_ayas turns every space into &nbsp;,
@@ -389,11 +394,12 @@ input, button, select {
     width:          1.4em;
     height:         1.4em;
     vertical-align: middle;
-    /* .page-text stretches everything inside it scaleY(1.3) to correct
-       the Quran font's own compressed line metrics. That correction is
-       meant for text glyphs, not this marker's circle/digit, so cancel
-       it back out here -- otherwise the circle renders as an ellipse. */
-    transform: scaleY(calc(1 / 1.3));
+    /* .page-text stretches everything inside it via --quran-line-stretch
+       (see updateFontSize() in panels.js) to correct the Quran font's
+       own compressed line metrics. That correction is meant for text
+       glyphs, not this marker's circle/digit, so cancel it back out here
+       -- otherwise the circle renders as an ellipse. */
+    transform: scaleY(calc(1 / var(--quran-line-stretch, 1.3)));
 }
 
 .aya-marker-svg {
@@ -524,7 +530,7 @@ input, button, select {
     border-radius: var(--radius);
     cursor:      pointer;
     font-size:   1em;
-    text-align:  right;
+    text-align:  start;
     transition:  background-color .15s ease;
 }
 
@@ -544,7 +550,7 @@ input, button, select {
 .menu-item-label {
     flex:      1 1 auto;
     min-width: 0;
-    text-align: right;
+    text-align: start;
 }
 
 .menu-item-audio-dot {
@@ -694,7 +700,7 @@ input, button, select {
     border:        none;
     border-top:    1px solid var(--bg2);
     cursor:        pointer;
-    text-align:    right;
+    text-align:    start;
     font:          inherit;
     color:         var(--fg);
     transition:    background-color .15s ease, color .15s ease;
@@ -1024,7 +1030,7 @@ input, button, select {
     gap:             .5em;
     padding:         .5em .6em;
     cursor:          pointer;
-    text-align:      right;
+    text-align:      start;
 }
 
 .edition-field-label {

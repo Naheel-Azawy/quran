@@ -1,9 +1,12 @@
+import { storage } from "./native-bridge.js";
+import { pushOverlayState, popOverlayState } from "./panels.js";
+import { t } from "./strings.js";
 const PANEL_TRANSITION_MS = 180; // must match .overlay-panel's transition duration in style.css
 
 // Granted-for-this-session decisions (cleared on reload); persisted
-// ("remember") decisions live in localStorage instead. Keyed by
-// "<kind>:<id>" so audio and tafsir servers never collide even if they
-// happened to share an id string.
+// ("remember") decisions live in storage instead (SharedPreferences on
+// Android, localStorage on the web). Keyed by "<kind>:<id>" so audio and
+// tafsir servers never collide even if they happened to share an id string.
 const sessionServerConsent = new Set();
 
 function consentStorageKey(kind, id) {
@@ -14,15 +17,17 @@ let consentBackdrop, consentPanel, consentMessageEl, consentServerEl, consentUrl
 let consentResolve = null;
 
 function consentMessageFor(kind) {
-    return kind === "audio"
-        ? "لتشغيل الصوت، يحتاج التطبيق إلى الاتصال بالخادم التالي. هل توافق على ذلك؟"
-        : "لعرض التفسير/الترجمة، يحتاج التطبيق إلى الاتصال بالخادم التالي. هل توافق على ذلك؟";
+    return kind === "audio" ? t("consent.message.audio") : t("consent.message.tafsir");
 }
 
 // Shows the consent dialog and resolves with "yes" | "remember" | "no".
 // Deliberately independent of panels.js's openPanel()/closeAllPanels(): it
 // must be able to float above whatever overlay panel (audio, aya,
-// tafsir...) is already open, rather than closing it.
+// tafsir...) is already open, rather than closing it. It still pushes
+// its own history snapshot via panels.js's shared push/pop helpers,
+// though, so a hardware/browser back press dismisses this before doing
+// anything else, same as a panel -- see panels.js's back-button section
+// for the full design.
 function showConsentDialog(kind, label, url) {
     return new Promise(resolve => {
         consentResolve = resolve;
@@ -38,6 +43,8 @@ function showConsentDialog(kind, label, url) {
             consentPanel.classList.add("open");
         });
         document.getElementById("consent-btn-no").focus();
+
+        pushOverlayState();
     });
 }
 
@@ -48,6 +55,7 @@ function hideConsentDialog(choice) {
         consentBackdrop.hidden = true;
         consentPanel.hidden = true;
     }, PANEL_TRANSITION_MS);
+    popOverlayState();
     const resolve = consentResolve;
     consentResolve = null;
     resolve?.(choice);
@@ -78,14 +86,14 @@ export function dismissConsentDialog() {
 // external server. Resolves instantly if already granted this session or
 // remembered from a previous one.
 export async function ensureServerConsent(kind, id, label, url) {
-    if (localStorage[consentStorageKey(kind, id)] === "granted") return true;
+    if (storage.getItem(consentStorageKey(kind, id)) === "granted") return true;
 
     const sessionKey = `${kind}:${id}`;
     if (sessionServerConsent.has(sessionKey)) return true;
 
     const choice = await showConsentDialog(kind, label, url);
     if (choice === "remember") {
-        localStorage[consentStorageKey(kind, id)] = "granted";
+        storage.setItem(consentStorageKey(kind, id), "granted");
         sessionServerConsent.add(sessionKey);
         return true;
     }

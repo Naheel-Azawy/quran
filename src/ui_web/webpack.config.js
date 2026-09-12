@@ -35,7 +35,11 @@ class WriteVersionFilePlugin {
 // builds quran.wasm into (see ../../Makefile's `build/web/quran.wasm`
 // target). The two are independent build steps sharing one output
 // directory, so `clean` is off here -- webpack must never delete a file
-// it didn't put there itself.
+// it didn't put there itself. icon.png/icon144.png are a third such
+// independent step (see the Makefile's ICONS section, which renders them
+// straight from public/res/ic_base.svg) -- that's why ic_base.svg itself
+// is excluded from the copy step below rather than shipped alongside the
+// PNGs it produces.
 const BUILD_WEB_DIR = path.resolve(__dirname, "../../build/web");
 
 module.exports = {
@@ -60,16 +64,24 @@ module.exports = {
         }),
 
         // Everything the app needs that isn't authored as a JS module and
-        // isn't quran.wasm (built separately, see above): style.css sits
-        // at the site root next to index.html; the manifest, icons,
-        // fonts and the self-hosted tafsir edition list live under
-        // public/res and are copied verbatim into build/web/res. sw.js
-        // runs in its own worker scope and is loaded directly by the
-        // browser from the site root, so it's copied there too.
+        // isn't quran.wasm or the icon PNGs (all built separately, see
+        // above): style.css sits at the site root next to index.html; the
+        // manifest, fonts, remaining SVG art and the self-hosted tafsir
+        // edition list live under public/res and are copied verbatim into
+        // build/web/res. sw.js runs in its own worker scope and is loaded
+        // directly by the browser from the site root, so it's copied
+        // there too.
         new CopyWebpackPlugin({
             patterns: [
                 { from: "public/style.css" },
-                { from: "public/res", to: "res" },
+                {
+                    from: "public/res",
+                    to: "res",
+                    // ic_base.svg is a build *input* (see the Makefile's
+                    // ICONS section), not a shipped asset -- everything
+                    // else under public/res still copies through as-is.
+                    globOptions: { ignore: ["**/ic_base.svg"] },
+                },
                 {
                     from: "public/sw.js",
                     transform(content) {
