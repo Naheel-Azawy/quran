@@ -13,8 +13,8 @@ const cacheAssets = [
     "res/header.svg",
     "res/aya.svg",
     "res/icon.png",
-    "res/manifest.webmanifest",
     "res/editions.json",
+    "manifest.webmanifest",
 ];
 
 const checkPeriod = 1000 * 60 * 10;

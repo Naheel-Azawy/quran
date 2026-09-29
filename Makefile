@@ -90,24 +90,6 @@ build/web/quran.wasm: src/quran_defs.h src/quran_core.h src/quran_core.c \
 		build/lut.c build/data.c \
 		-o build/web/quran.wasm
 
-# Same story as quran.wasm above: rendered straight into build/web/res/
-# rather than living as static files under src/ui_web/public/res/, so
-# they're never stale-copied by webpack's own public/ copy step (and
-# ic_base.svg itself is the only icon source file that needs to exist in
-# the source tree at all now).
-#
-# 512x512 / 144x144 are simply what this app has always shipped as
-# icon.png / icon144.png (referenced by that name in index.html and
-# manifest.webmanifest) -- resize here if you'd rather target different
-# dimensions.
-build/web/res/icon.png: $(ICON_SVG)
-	mkdir -p build/web/res
-	$(RSVG_CONVERT) -w 512 -h 512 --background-color=$(ICON_BG) -o $@ $<
-
-build/web/res/icon144.png: $(ICON_SVG)
-	mkdir -p build/web/res
-	$(RSVG_CONVERT) -w 144 -h 144 --background-color=$(ICON_BG) -o $@ $<
-
 src/ui_web/node_modules: src/ui_web/package.json $(wildcard src/ui_web/package-lock.json)
 	cd src/ui_web && if [ -f package-lock.json ]; then npm ci; else npm install; fi
 	touch src/ui_web/node_modules
@@ -115,7 +97,7 @@ src/ui_web/node_modules: src/ui_web/package.json $(wildcard src/ui_web/package-l
 # webpack builds the rest of the web UI (JS bundle, HTML, CSS, manifest,
 # remaining res/ files, fonts, service worker, and a fresh version marker
 # for it) and writes it all directly into build/web/, alongside
-# quran.wasm and the icons above.
+# quran.wasm above.
 #
 # Freshness is tracked via this stamp file -- touched strictly *after*
 # `npm run build` returns -- rather than by comparing one particular
@@ -125,7 +107,7 @@ src/ui_web/node_modules: src/ui_web/package.json $(wildcard src/ui_web/package-l
 # whatever), that would otherwise make the source look newer than the
 # target on the very next invocation and force an endless rebuild; the
 # stamp can't lose that race since it's always written last.
-build/web/.stamp: build/web/quran.wasm build/web/res/icon.png build/web/res/icon144.png \
+build/web/.stamp: build/web/quran.wasm \
 		src/ui_web/node_modules src/ui_web/webpack.config.js \
 		$(shell find src/ui_web/src src/ui_web/public -type f)
 	cd src/ui_web && npm run build

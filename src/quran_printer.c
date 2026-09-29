@@ -99,6 +99,8 @@ static size_t center_swprintf(int width, wchar_t *buf, size_t size,
 #undef CENTER_FMT
 }
 
+// TODO: shouldn't add after between لا or even if there're harakat or hamza in between
+
 static bool can_add_tatweel(wchar_t c, wchar_t *next_ptr) {
     if (next_ptr != NULL) {
         // false if at the end of the word
