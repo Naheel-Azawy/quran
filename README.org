@@ -1,5 +1,5 @@
 * Quran
-A minimal Quran for CLI, TUI, and web written in C (and JavaScript for web).
+A minimal Quran for CLI, TUI, web, and Android written in C (and JavaScript for web, and little Java for Android).
 
 ** TUI
 #+begin_src shell
@@ -19,12 +19,22 @@ A minimal Quran for CLI, TUI, and web written in C (and JavaScript for web).
   $ make web-push SERVER=me@example.tld
 #+end_src
 
+** Android
+#+begin_src shell
+  $ make android ANDROID_DEBUG=0
+#+end_src
+
+#+begin_src shell
+  $ make android-install ANDROID_DEBUG=0
+#+end_src
+
 ** Dependencies
 - ~gcc~
 - ~node~
 - ~emcc~ for web
 - ~fribidi~ - optional for TUI
 - ~fzf~ - optional for TUI
+- Android studio - optional for Android
 
 ** License
 GPL-3
