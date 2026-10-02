@@ -1,11 +1,22 @@
 PREFIX    = /usr/local
 BINPREFIX = $(DESTDIR)$(PREFIX)/bin
-VERSION   = 0.0.3
+VERSION   = 0.0.4
 SERVER    = me@naheel.xyz
 
 all: tty web
 tty: build/main
 web: build/web/.stamp
+
+# VERSION above is the single source of truth: it feeds the C header, the
+# web build (JS/CSS ?v= tags, service-worker cache id, package.json) and
+# the Android versionName. build/.version only changes on disk when VERSION
+# does, so everything depending on it rebuilds on a version bump and never
+# otherwise (FORCE makes the check run every time; the cmp keeps the mtime).
+build/.version: FORCE
+	@mkdir -p build
+	@printf '%s\n' '$(VERSION)' | cmp -s - $@ || printf '%s\n' '$(VERSION)' > $@
+
+FORCE:
 
 FLAGS_COMMON = -O3
 #FLAGS_COMMON = -g
@@ -56,7 +67,7 @@ build/data.o: build/data.c
 
 # TTY #################################################
 
-build/version.h:
+build/version.h: build/.version
 	mkdir -p build
 	printf '#define QURAN_VERSION "%s"\n' $(VERSION) > build/version.h
 
@@ -107,10 +118,10 @@ src/ui_web/node_modules: src/ui_web/package.json $(wildcard src/ui_web/package-l
 # whatever), that would otherwise make the source look newer than the
 # target on the very next invocation and force an endless rebuild; the
 # stamp can't lose that race since it's always written last.
-build/web/.stamp: build/web/quran.wasm \
+build/web/.stamp: build/web/quran.wasm build/.version \
 		src/ui_web/node_modules src/ui_web/webpack.config.js \
 		$(shell find src/ui_web/src src/ui_web/public -type f)
-	cd src/ui_web && npm run build
+	cd src/ui_web && QURAN_VERSION=$(VERSION) npm run build
 	touch $@
 
 web-serve: web
@@ -288,4 +299,4 @@ clean: clean-not-node
 	rm -rf node_modules package.json package-lock.json
 	rm -rf src/ui_web/node_modules
 
-.PHONY: clean clean-not-node install uninstall tty web web-serve web-push android android-install
+.PHONY: FORCE clean clean-not-node install uninstall tty web web-serve web-push android android-install

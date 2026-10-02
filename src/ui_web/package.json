@@ -1,6 +1,6 @@
 {
   "name": "quran",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "The holy Quran, by Naheel",
   "scripts": {
     "build": "webpack --mode production",

@@ -4,16 +4,42 @@ const webpack           = require("webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const child_process     = require('child_process');
-const pkg               = require("./package.json");
 
-// A fresh, unique value on every build. The service worker (sw.js) fetches
-// the "version" file this gets written to (bypassing the HTTP cache, see
-// sw.js) and compares it against the cache it currently holds; a mismatch
-// means "the app changed since this cache was built" and triggers a full
-// re-cache. Basing this on the package version *and* the build time means
-// forgetting to bump the version number in package.json can never cause a
-// stale build to be served indefinitely.
-const VERSION = `${pkg.version}-${Date.now()}`;
+// The Makefile's VERSION is the single source of truth. `make web` passes
+// it in as QURAN_VERSION; when webpack is run by hand (npm run build /
+// watch) it is read straight out of the Makefile instead, so both paths
+// always agree. (package.json's own "version" is kept in sync below.)
+function readMakefileVersion() {
+    const makefile = fs.readFileSync(path.resolve(__dirname, "../../Makefile"), "utf8");
+    const m = /^VERSION\s*[:?]?=\s*(\S+)/m.exec(makefile);
+    if (!m) throw new Error("VERSION not found in the top-level Makefile");
+    return m[1];
+}
+
+const BASE_VERSION = process.env.QURAN_VERSION || readMakefileVersion();
+
+// Rewrites package.json's "version" when it differs from the Makefile's.
+// The file's mtime is set back to node_modules' afterwards: the Makefile
+// treats package.json as the input of `npm ci`, so a version-only edit
+// must not look like a dependency change and force a reinstall.
+function syncPackageVersion(version) {
+    const file = path.resolve(__dirname, "package.json");
+    const pkg  = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (pkg.version === version) return;
+    pkg.version = version;
+    const nm = path.resolve(__dirname, "node_modules");
+    const st = fs.existsSync(nm) ? fs.statSync(nm) : null;
+    fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
+    if (st) fs.utimesSync(file, st.atime, st.mtime);
+}
+
+syncPackageVersion(BASE_VERSION);
+
+// Cache identity for the service worker (sw.js): the Makefile version plus
+// the build time, so a rebuild that forgot to bump VERSION still gets
+// treated as new by the service worker's cache check. Static asset URLs
+// (see VersionAssetUrlsPlugin) use the plain Makefile version.
+const VERSION = `${BASE_VERSION}-${Date.now()}`;
 
 // Writes the plain-text "version" file read by sw.js. Kept as a tiny
 // inline plugin rather than a static asset because its content has to be
@@ -27,6 +53,27 @@ class WriteVersionFilePlugin {
                     compilation.emitAsset("version", new webpack.sources.RawSource(VERSION));
                 }
             );
+        });
+    }
+}
+
+// Appends ?v=<Makefile version> to every local .js/.css URL in the emitted
+// index.html (bundle.js, style.css), so a release can never be served from
+// a browser's or CDN's stale cached copy. Runs on the final HTML, so it
+// covers both the script tag webpack injects and the stylesheet link
+// authored in public/index.html, with no per-file bookkeeping. Absolute
+// URLs and ones that already carry a query are left alone.
+class VersionAssetUrlsPlugin {
+    apply(compiler) {
+        compiler.hooks.compilation.tap("VersionAssetUrlsPlugin", compilation => {
+            HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
+                "VersionAssetUrlsPlugin",
+                (data, cb) => {
+                    data.html = data.html.replace(
+                        /\b(src|href)="([^"?#:]+\.(?:js|css))"/g,
+                        (_, attr, url) => `${attr}="${url}?v=${encodeURIComponent(BASE_VERSION)}"`);
+                    cb(null, data);
+                });
         });
     }
 }
@@ -129,6 +176,8 @@ module.exports = {
             inject: "body",
             minify: false,
         }),
+
+        new VersionAssetUrlsPlugin(),
 
         // Everything the app needs that isn't authored as a JS module and
         // isn't quran.wasm (built separately, see above) or the icon PNGs

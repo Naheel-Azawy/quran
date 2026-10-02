@@ -1,5 +1,5 @@
 // __CACHE_NAME__ is replaced at build time (see webpack.config.js) with a
-// value derived from the package version and the build timestamp, so
+// value derived from the Makefile's VERSION and the build timestamp, so
 // every deploy gets its own unique cache name automatically -- no manual
 // version bump required.
 let   cacheName   = "__CACHE_NAME__";
@@ -16,6 +16,27 @@ const cacheAssets = [
     "res/editions.json",
     "manifest.webmanifest",
 ];
+
+// index.html references bundle.js and style.css as "bundle.js?v=<version>"
+// (cache-busting for the browser's HTTP cache, see VersionAssetUrlsPlugin
+// in webpack.config.js), while cacheAssets above stores them under their
+// bare URLs. Cache Storage matches on the full URL, query included, so a
+// plain caches.match(request) would miss them -- including offline, where
+// that is fatal. This maps such a request back to its bare cached URL.
+// Only URLs of listed assets are touched, so other requests that carry a
+// query string (anything cross-origin, for instance) keep exact matching.
+// The version inside the query is redundant here anyway: the cache itself
+// is already versioned through cacheName.
+const assetUrls = new Set(cacheAssets.map(f => new URL(f, self.location.href).href));
+
+function cacheKeyFor(request) {
+    const url = new URL(request.url);
+    if (url.search) {
+        const bare = url.origin + url.pathname;
+        if (assetUrls.has(bare)) return bare;
+    }
+    return request;
+}
 
 const checkPeriod = 1000 * 60 * 10;
 let lastChecked = millis() - checkPeriod;
@@ -114,7 +135,8 @@ self.addEventListener("fetch", (e) => {
             log(`[Service Worker] will not cache ${path}`);
             return await fetch(e.request, { cache: "no-store" });
         } else {
-            const r = await caches.match(e.request);
+            const key = cacheKeyFor(e.request);
+            const r = await caches.match(key);
             if (r) {
                 log(`[Service Worker] Loading cached`);
                 return r;
@@ -122,7 +144,7 @@ self.addEventListener("fetch", (e) => {
             const response = await fetch(e.request);
             const cache = await caches.open(cacheName);
             log(`[Service Worker] Caching new resource: ${e.request.url}`);
-            cache.put(e.request, response.clone());
+            cache.put(key, response.clone());
             return response;
         }
     })());
