@@ -452,7 +452,7 @@ input, button, select {
 .aya-marker {
     position:       relative;
     display:        inline-block;
-    width:          1.4em;
+    width:          2em;
     height:         1.4em;
     vertical-align: middle;
     /* .page-text stretches everything inside it via --quran-line-stretch
@@ -471,11 +471,11 @@ input, button, select {
 
 .aya-marker-num {
     position:    absolute;
-    top:         70%;
+    top:         100%;
     left:        50%;
     transform:   translate(-50%, -50%);
     font-family: sans-serif; /* not --quran-font, which would draw its own circle again */
-    font-size:   .6em;
+    font-size:   .9em;
     color:       var(--fg);
 }
 
