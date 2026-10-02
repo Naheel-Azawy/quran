@@ -1,4 +1,4 @@
-import { onOpenSurasPanel, onOpenPagePanel, onOpenSearchPanel } from "./navigation.js";
+import { onOpenSurasPanel, resetMenuSearch } from "./navigation.js";
 import { isConsentDialogOpen, dismissConsentDialog } from "./consent.js";
 import { storage, getAndroidBridge } from "./native-bridge.js";
 import { getLanguagePreference, setLanguage } from "./strings.js";
@@ -9,8 +9,31 @@ const bridge = getAndroidBridge();
 
 let panelCloseTimer = null;
 
+// The one panel currently open (or opening), tracked explicitly instead
+// of being sniffed back out of the DOM: during a close fade a panel is
+// still un-[hidden] but no longer "current", and during an open its
+// .open class is only added a frame later.
+let currentPanelId = null;
+
 function backdrop() {
     return document.getElementById("overlay-backdrop");
+}
+
+// Focus policy per panel. Panels flagged data-autofocus="fine-pointer"
+// (the menu, whose first field is a search box) only focus that field
+// when a mouse/trackpad is the primary input: on a phone, focusing it
+// would raise the keyboard over the menu every single time it opens.
+function focusPanel(panel) {
+    if (panel.dataset.autofocus === "fine-pointer") {
+        if (window.matchMedia("(pointer: fine)").matches) {
+            panel.querySelector("input")?.focus();
+        } else {
+            panel.tabIndex = -1;
+            panel.focus({ preventScroll: true });
+        }
+        return;
+    }
+    panel.querySelector("input, select, button")?.focus();
 }
 
 export function openPanel(id) {
@@ -31,6 +54,8 @@ export function openPanel(id) {
     const bd = backdrop();
     bd.hidden = false;
     const panel = document.getElementById(id);
+    const changed = currentPanelId !== id;
+    currentPanelId = id;
     panel.hidden = false;
     // Force layout so the browser has registered the "closed" state above
     // before the next line flips it open; otherwise both changes land in
@@ -40,13 +65,18 @@ export function openPanel(id) {
         bd.classList.add("open");
         panel.classList.add("open");
     });
-    panel.querySelector("input, select, button")?.focus();
+    focusPanel(panel);
 
-    pushOverlayState();
+    // Re-opening the panel that is already showing is not a navigation,
+    // so it must not add a history entry (it would take an extra back
+    // press to undo something that changed nothing).
+    if (changed) pushOverlayState();
 }
 
-export function closeAllPanels() {
+// Visual close only; history is handled by closeAllPanels() below.
+function closeAllPanelsUI() {
     clearTimeout(panelCloseTimer);
+    currentPanelId = null;
     const bd = backdrop();
     bd.classList.remove("open");
     document.getElementById("btn-menu").classList.remove("hidden");
@@ -59,8 +89,20 @@ export function closeAllPanels() {
             p.hidden = true;
         }
     }, PANEL_TRANSITION_MS);
+}
 
-    popOverlayState();
+// Closes everything (X button, backdrop tap, Escape, "navigated, done")
+// and unwinds *all* history entries the overlays pushed, back to the
+// base page. Returns a promise that settles once history has caught up,
+// for callers that go on to do something history-sensitive (e.g. show
+// the consent dialog) right after.
+export function closeAllPanels() {
+    closeAllPanelsUI();
+    if (restoringFromHistory) return Promise.resolve();
+    return enqueueHistory(() => {
+        const d = overlayDepth();
+        return d > 0 ? traverseHistory(-d, false) : undefined;
+    });
 }
 
 // ---------- theme ----------
@@ -181,93 +223,137 @@ document.documentElement.style.setProperty("--quran-line-stretch", bridge ? "1.2
 
 // ---------- back button (Android hardware back *and* browser back) ----------
 //
-// Every real navigation that changes what's on screen -- opening or
-// switching a panel, showing the consent dialog -- pushes a *full
-// snapshot* of the resulting state ({panel, consent}) as a history
-// entry. That makes a back press (hardware, gesture, or a plain
-// browser's back button) just the browser's own ordinary "undo my last
-// navigation": it pops exactly one real entry already sitting on the
-// stack, and popstate hands back the snapshot from *before* whatever's
-// being undone -- applyOverlayState() below just redraws the UI to
-// match it (or closes everything, for the base/no-entry state).
+// Model: the base page is history depth 0. Every real navigation that
+// changes what is on screen (opening or switching a panel, showing the
+// consent dialog) pushes ONE entry whose state is a snapshot of the
+// resulting UI plus its depth: {panel, consent, d}. So:
 //
-// This replaces an earlier, more fragile design that tried to react to
-// each popstate by closing something and then blindly re-pushing a
-// fresh entry to "arm" the next back press: with only one shared flag,
-// two panels deep couldn't be told apart from one, and re-pushing
-// *inside* a popstate handler relied on that pushState() being reliably
-// registered before the *next* hardware back press's canGoBack() check
-// -- a real race, not just a theoretical one. Pushing one entry per
-// actual navigation sidesteps both problems: there's a real, distinct
-// entry for every level, so N presses undo exactly N navigations, with
-// nothing to race.
+//   * hardware/gesture/browser back = the browser's own "undo one
+//     navigation"; popstate hands back the previous snapshot and
+//     applyOverlayState() redraws the UI to match (user-initiated).
+//   * every in-app "back" control calls goBackInOverlay(), which is the
+//     same history.back(), so a tap on a chevron and a hardware back
+//     press can never disagree.
+//   * every "close" (X, backdrop, Escape, finishing a navigation) unwinds
+//     the whole stack with a single history.go(-depth). Popping just one
+//     entry here would land on the previous snapshot and redraw the menu
+//     the user just dismissed, and leave stale entries behind.
 //
-// It's also why every "back" control in the app -- a panel's own
-// in-header chevron ([data-back] below), the edition picker's back
-// button (see tafsir.js) -- should call goBackInOverlay() (a thin
-// history.back() wrapper) instead of directly opening a target panel:
-// routing every "back" through the exact same history.back() is what
-// guarantees an in-app back tap and a subsequent hardware back press can
-// never disagree about what "back" means.
+// Because history.back()/go() complete asynchronously (popstate arrives
+// later), all history operations are serialized through one promise
+// queue, and each operation reads the *current* depth when it actually
+// runs. That makes sequences like "dismiss consent, then close the menu"
+// or "close, then immediately open something" safe: none can compute
+// its offset against an entry that is about to disappear.
+//
+// popstate events caused by our own unwinds do not redraw anything (the
+// UI was already updated first); only user-initiated ones and the
+// explicit chevron-back do.
 let restoringFromHistory = false; // true only while applyOverlayState() runs
+
+const TRAVERSAL_TIMEOUT_MS = 600; // safety net if popstate never arrives
+
+let historyQueue = Promise.resolve();
+let pendingTraversal = null; // {apply, resolve} for the in-flight go()/back()
+
+function overlayDepth() {
+    return history.state?.d || 0;
+}
+
+function enqueueHistory(op) {
+    historyQueue = historyQueue
+        .then(op)
+        .catch(e => console.warn("overlay history operation failed:", e));
+    return historyQueue;
+}
+
+// Moves through history and resolves once the matching popstate has been
+// seen (or the safety timeout fires). `apply` says whether that popstate
+// should redraw the UI (true: UI hasn't been updated yet, e.g. chevron
+// back; false: the caller already updated it, e.g. closing).
+function traverseHistory(delta, apply) {
+    return new Promise(resolve => {
+        const entry = {
+            apply,
+            resolve: () => { clearTimeout(timer); resolve(); },
+        };
+        const timer = setTimeout(() => {
+            if (pendingTraversal === entry) pendingTraversal = null;
+            resolve();
+        }, TRAVERSAL_TIMEOUT_MS);
+        pendingTraversal = entry;
+        history.go(delta);
+    });
+}
 
 function currentOverlayState() {
     return {
-        panel: document.querySelector(".overlay-panel:not([hidden])")?.id || null,
+        panel: currentPanelId,
         consent: isConsentDialogOpen(),
     };
 }
 
 // Called after any real (non-history-replay) action that opens or
-// switches to a panel, or shows the consent dialog -- pushes a fresh
-// snapshot of the *resulting* state on top of whatever was there before.
+// switches to a panel, or shows the consent dialog.
 export function pushOverlayState() {
     if (restoringFromHistory) return;
-    history.pushState(currentOverlayState(), "");
+    enqueueHistory(() => {
+        history.pushState({ ...currentOverlayState(), d: overlayDepth() + 1 }, "");
+    });
 }
 
-// Called after any real (non-history-replay), non-back action that
-// *closes* something -- X button, backdrop click, Escape, resolving the
-// consent dialog -- so it pops the entry that represented it being open,
-// rather than pushing a new "closed" one (which would make a
-// *subsequent* back press perversely reopen what was just closed here).
+// Called when something that pushed its own entry (the consent dialog)
+// is resolved by a real action: undoes exactly that one entry. The UI
+// has already been updated by the caller, so the popstate is not applied.
 export function popOverlayState() {
-    if (restoringFromHistory) return;
-    if (history.state?.panel || history.state?.consent) history.back();
+    if (restoringFromHistory) return Promise.resolve();
+    return enqueueHistory(() =>
+        overlayDepth() > 0 ? traverseHistory(-1, false) : undefined);
 }
 
-// The one function every in-app "back" control should call -- see the
-// big comment above for why this has to be history.back() and not, say,
-// openPanel(theTargetPanelId) directly.
+// The one function every in-app "back" control should call.
 export function goBackInOverlay() {
-    history.back();
+    return enqueueHistory(() => {
+        if (overlayDepth() > 0) return traverseHistory(-1, true);
+        closeAllPanelsUI(); // history lost track of us; at least don't strand the UI
+    });
 }
 
-// Redraws the overlay UI to match a history snapshot -- from a real
-// back/forward navigation's popstate event, or null for "the base page,
-// nothing open". Never itself pushes/pops history; it's purely applying
-// a state the browser has already navigated to.
+// Redraws the overlay UI to match a history snapshot (null/base = nothing
+// open). Never itself pushes or pops history.
 function applyOverlayState(state) {
     restoringFromHistory = true;
     try {
-        if (state?.panel) {
-            openPanel(state.panel);
-        } else {
-            closeAllPanels();
+        const target = state?.panel || null;
+        if (target) {
+            if (target !== currentPanelId) openPanel(target);
+        } else if (currentPanelId || !backdrop().hidden) {
+            closeAllPanelsUI();
         }
         if (isConsentDialogOpen() && !state?.consent) {
             dismissConsentDialog();
         }
-        // state?.consent === true with the dialog not already open would
-        // mean the user went *forward* back into it -- not a flow this
-        // app's one-shot yes/no/remember consent prompt supports
-        // re-entering, so there's nothing to do for that case.
+        // state?.consent === true with the dialog not open would mean the
+        // user went *forward* back into it -- a one-shot yes/no/remember
+        // prompt can't be re-entered, so there's nothing to do.
     } finally {
         restoringFromHistory = false;
     }
 }
 
-window.addEventListener("popstate", e => applyOverlayState(e.state));
+window.addEventListener("popstate", e => {
+    const p = pendingTraversal;
+    pendingTraversal = null;
+    if (!p || p.apply) applyOverlayState(e.state);
+    p?.resolve();
+});
+
+// A reload (e.g. changing the UI language) keeps history.state, so the
+// page can start "inside" an overlay entry with nothing actually open.
+// Step back out to the base entry before anything else happens.
+if (overlayDepth() > 0) {
+    enqueueHistory(() => traverseHistory(-overlayDepth(), false));
+}
 
 // ---------- wiring ----------
 
@@ -293,15 +379,16 @@ export function bindPanelsUI() {
         languageSelect.addEventListener("change", e => setLanguage(e.target.value));
     }
 
-    document.getElementById("btn-menu").addEventListener("click", () => openPanel("panel-menu"));
+    document.getElementById("btn-menu").addEventListener("click", () => {
+        resetMenuSearch(); // a fresh open starts on the home view, not the last query
+        openPanel("panel-menu");
+    });
 
-    for (const btn of document.querySelectorAll(".menu-item[data-target]")) {
+    for (const btn of document.querySelectorAll("[data-target]")) {
         btn.addEventListener("click", () => {
             const target = btn.dataset.target;
             openPanel(target);
             if (target === "panel-suras") onOpenSurasPanel();
-            else if (target === "panel-page") onOpenPagePanel();
-            else if (target === "panel-search") onOpenSearchPanel();
         });
     }
 

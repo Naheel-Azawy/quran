@@ -15,6 +15,14 @@ export function toArabicDigits(str) {
         .join("");
 }
 
+// Arabic-Indic (U+0660..) and Persian (U+06F0..) digits -> ASCII, for
+// parsing what the user typed into the search box.
+export function fromArabicDigits(str) {
+    return String(str)
+        .replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660)
+        .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x06F0);
+}
+
 export function escapeHtml(s) {
     return String(s).replace(/&(?!nbsp;)/g, "&amp;")
                     .replace(/</g, "&lt;")

@@ -74,8 +74,11 @@ export function initConsentDialog() {
     consentBackdrop.addEventListener("click", () => hideConsentDialog("no"));
 }
 
+// Based on the pending promise rather than the panel's [hidden] flag: the
+// panel stays un-hidden for the length of its close fade, which would make
+// a dialog that was just answered look still open to history snapshots.
 export function isConsentDialogOpen() {
-    return !!consentPanel && !consentPanel.hidden;
+    return consentResolve !== null;
 }
 
 export function dismissConsentDialog() {

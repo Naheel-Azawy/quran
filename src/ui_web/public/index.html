@@ -24,6 +24,14 @@
             <span class="menu-dot" aria-hidden="true"></span>
         </button>
 
+        <!-- ---------- mini audio player (main view; only while a playback session exists) ---------- -->
+
+        <div id="mini-player" class="mini-player" hidden>
+            <button id="btn-mini-playpause" class="icon-btn audio-playpause" aria-label="تشغيل" title="تشغيل" data-icon="play-pause-sm" data-i18n-aria-label="audio.action.play" data-i18n-title="audio.action.play"></button>
+            <button id="btn-mini-label" class="mini-label" type="button" aria-label="الانتقال إلى الآية الجارية" title="الانتقال إلى الآية الجارية" data-i18n-aria-label="audio.mini.jump" data-i18n-title="audio.mini.jump"></button>
+            <button id="btn-mini-stop" class="icon-btn" aria-label="إيقاف" title="إيقاف" data-icon="stop-sm" data-i18n-aria-label="audio.stop" data-i18n-title="audio.stop"></button>
+        </div>
+
         <div id="overlay-backdrop" hidden></div>
 
         <!-- ---------- external-server consent dialog (sits above everything else) ---------- -->
@@ -45,54 +53,60 @@
             </div>
         </section>
 
-        <!-- ---------- main menu ---------- -->
+        <!-- ---------- main menu: search, where-am-I + page slider, listen, shortcuts, display ---------- -->
 
-        <section id="panel-menu" class="overlay-panel panel-menu" hidden>
+        <section id="panel-menu" class="overlay-panel panel-menu" data-autofocus="fine-pointer" hidden>
             <div class="panel-header">
-                <h2 data-i18n="menu.title">القائمة</h2>
+                <input id="menu-search" type="search" placeholder="ابحث في القرآن أو عن سورة أو صفحة…" autocomplete="off" enterkeyhint="search" aria-label="بحث" data-i18n-placeholder="menu.searchPlaceholder" data-i18n-aria-label="menu.search">
                 <button class="icon-btn" data-close aria-label="إغلاق" data-icon="close" data-i18n-aria-label="common.close"></button>
             </div>
-            <ul class="menu-list">
-                <li>
-                    <button class="menu-item" data-target="panel-suras">
-                        <span class="menu-item-icon" data-icon="menu-index"></span>
-                        <span class="menu-item-label" data-i18n="menu.suras">الفهرس</span>
+
+            <div id="menu-home" class="menu-home">
+                <div class="menu-section menu-location">
+                    <div id="menu-sura-name" class="menu-sura-name"></div>
+                    <div class="menu-page-row">
+                        <input id="page-slider" type="range" min="1" max="604" step="1" value="1" aria-label="اذهب إلى صفحة" data-i18n-aria-label="page.ariaLabel">
+                        <input id="page-input" type="number" min="1" max="604" inputmode="numeric" aria-label="اذهب إلى صفحة" data-i18n-aria-label="page.ariaLabel">
+                    </div>
+                </div>
+
+                <div class="menu-section menu-audio-strip">
+                    <button id="btn-menu-audio-playpause" class="icon-btn audio-playpause" aria-label="تشغيل" title="تشغيل" data-icon="play-pause-sm" data-i18n-aria-label="audio.action.play" data-i18n-title="audio.action.play"></button>
+                    <button id="btn-menu-audio-label" class="menu-audio-label" type="button"></button>
+                    <button id="btn-menu-audio-stop" class="icon-btn" aria-label="إيقاف" title="إيقاف" disabled data-icon="stop-sm" data-i18n-aria-label="audio.stop" data-i18n-title="audio.stop"></button>
+                    <button class="icon-btn" data-target="panel-audio" aria-label="إعدادات الصوت" title="إعدادات الصوت" data-icon="settings-sm" data-i18n-aria-label="audio.settings" data-i18n-title="audio.settings"></button>
+                </div>
+
+                <div class="menu-tiles">
+                    <button class="menu-tile" data-target="panel-suras">
+                        <span class="menu-tile-icon" data-icon="menu-index"></span>
+                        <span class="menu-tile-label" data-i18n="menu.suras">الفهرس</span>
                     </button>
-                </li>
-                <li>
-                    <button class="menu-item" data-target="panel-page">
-                        <span class="menu-item-icon" data-icon="menu-page"></span>
-                        <span class="menu-item-label" data-i18n="menu.page">الانتقال إلى صفحة</span>
+                    <button class="menu-tile" data-target="panel-tafsir">
+                        <span class="menu-tile-icon" data-icon="menu-tafsir"></span>
+                        <span class="menu-tile-label" data-i18n="menu.tafsir">التفسير والترجمة</span>
                     </button>
-                </li>
-                <li>
-                    <button class="menu-item" data-target="panel-search">
-                        <span class="menu-item-icon" data-icon="menu-search"></span>
-                        <span class="menu-item-label" data-i18n="menu.search">بحث</span>
+                    <button class="menu-tile" data-target="panel-settings">
+                        <span class="menu-tile-icon" data-icon="settings"></span>
+                        <span class="menu-tile-label" data-i18n="menu.settings">الإعدادات</span>
                     </button>
-                </li>
-                <li class="menu-row menu-audio-row">
-                    <button class="menu-item" data-target="panel-audio">
-                        <span class="menu-item-icon" data-icon="menu-audio"></span>
-                        <span class="menu-item-label" data-i18n="menu.audio">الاستماع</span>
-                        <span id="menu-audio-dot" class="menu-item-audio-dot" aria-hidden="true"></span>
-                    </button>
-                    <button id="btn-menu-audio-stop" class="icon-btn menu-quick-btn" aria-label="إيقاف" title="إيقاف" disabled data-icon="stop-sm" data-i18n-aria-label="audio.stop" data-i18n-title="audio.stop"></button>
-                    <button id="btn-menu-audio-playpause" class="icon-btn menu-quick-btn audio-playpause" aria-label="تشغيل" title="تشغيل" data-icon="play-pause-sm" data-i18n-aria-label="audio.action.play" data-i18n-title="audio.action.play"></button>
-                </li>
-                <li>
-                    <button class="menu-item" data-target="panel-tafsir">
-                        <span class="menu-item-icon" data-icon="menu-tafsir"></span>
-                        <span class="menu-item-label" data-i18n="menu.tafsir">التفسير والترجمة</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="menu-item" data-target="panel-settings">
-                        <span class="menu-item-icon" data-icon="settings"></span>
-                        <span class="menu-item-label" data-i18n="menu.settings">الإعدادات</span>
-                    </button>
-                </li>
-            </ul>
+                </div>
+
+                <div class="menu-section menu-display">
+                    <div class="theme-swatches" role="radiogroup" aria-label="المظهر" data-i18n-aria-label="settings.theme">
+                        <button class="swatch swatch-black"  data-theme="black"  aria-label="أسود" data-i18n-aria-label="theme.black"></button>
+                        <button class="swatch swatch-white"  data-theme="white"  aria-label="أبيض" data-i18n-aria-label="theme.white"></button>
+                        <button class="swatch swatch-yellow" data-theme="yellow" aria-label="أصفر" data-i18n-aria-label="theme.yellow"></button>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="simple-toggle">
+                        <span class="switch-track"><span class="switch-thumb"></span></span>
+                        <span class="switch-label" data-i18n="settings.hideDiacritics">إخفاء التشكيل</span>
+                    </label>
+                </div>
+            </div>
+
+            <ul id="menu-results" class="result-list" hidden></ul>
         </section>
 
         <!-- ---------- sura index (custom, not a native select) ---------- -->
@@ -109,34 +123,6 @@
             <ul id="sura-list" class="sura-list" role="listbox" aria-label="السور" data-i18n-aria-label="suras.ariaLabel"></ul>
         </section>
 
-        <!-- ---------- jump to page ---------- -->
-
-        <section id="panel-page" class="overlay-panel panel-page" hidden>
-            <div class="panel-header">
-                <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع" data-icon="chevron-back" data-i18n-aria-label="common.back" data-i18n-title="common.back"></button>
-                <h2 data-i18n="menu.page">الانتقال إلى صفحة</h2>
-                <button class="icon-btn" data-close aria-label="إغلاق" data-icon="close" data-i18n-aria-label="common.close"></button>
-            </div>
-            <div class="page-jump-body">
-                <label class="setting-label" for="page-input" data-i18n="page.label">رقم الصفحة (١ - ٦٠٤)</label>
-                <div class="page-jump-row">
-                    <input id="page-input" type="number" min="1" max="604" inputmode="numeric" aria-label="اذهب إلى صفحة" data-i18n-aria-label="page.ariaLabel">
-                    <button id="btn-page-go" class="btn-primary" data-i18n="page.go">اذهب</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- ---------- search ---------- -->
-
-        <section id="panel-search" class="overlay-panel" hidden>
-            <div class="panel-header">
-                <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع" data-icon="chevron-back" data-i18n-aria-label="common.back" data-i18n-title="common.back"></button>
-                <input id="search-input" type="search" placeholder="ابحث في القرآن…" autocomplete="off" data-i18n-placeholder="search.placeholder">
-                <button class="icon-btn" data-close aria-label="إغلاق" data-icon="close" data-i18n-aria-label="common.close"></button>
-            </div>
-            <ul id="search-results" class="result-list"></ul>
-        </section>
-
         <!-- ---------- settings ---------- -->
 
         <section id="panel-settings" class="overlay-panel" hidden>
@@ -144,15 +130,6 @@
                 <button class="icon-btn icon-back" data-back="panel-menu" aria-label="رجوع" title="رجوع" data-icon="chevron-back" data-i18n-aria-label="common.back" data-i18n-title="common.back"></button>
                 <h2 data-i18n="menu.settings">الإعدادات</h2>
                 <button class="icon-btn" data-close aria-label="إغلاق" data-icon="close" data-i18n-aria-label="common.close"></button>
-            </div>
-
-            <div class="setting-group">
-                <span class="setting-label" data-i18n="settings.theme">المظهر</span>
-                <div class="theme-swatches" role="radiogroup" aria-label="المظهر" data-i18n-aria-label="settings.theme">
-                    <button class="swatch swatch-black"  data-theme="black"  aria-label="أسود" data-i18n-aria-label="theme.black"></button>
-                    <button class="swatch swatch-white"  data-theme="white"  aria-label="أبيض" data-i18n-aria-label="theme.white"></button>
-                    <button class="swatch swatch-yellow" data-theme="yellow" aria-label="أصفر" data-i18n-aria-label="theme.yellow"></button>
-                </div>
             </div>
 
             <!-- <div class="setting-group">
@@ -175,13 +152,6 @@
                 </select>
             </div>
 
-            <div class="setting-group">
-                <label class="switch">
-                    <input type="checkbox" id="simple-toggle">
-                    <span class="switch-track"><span class="switch-thumb"></span></span>
-                    <span class="switch-label" data-i18n="settings.hideDiacritics">إخفاء التشكيل</span>
-                </label>
-            </div>
         </section>
 
         <!-- ---------- audio ---------- -->

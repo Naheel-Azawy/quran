@@ -1,9 +1,10 @@
-import { suraNames, suraOfPage, globalAyahNumber, stepAya, pageOfSuraAya } from "./quran-index.js";
+import { suraNames, globalAyahNumber, stepAya, pageOfSuraAya, firstAyaOfPage } from "./quran-index.js";
 import { toArabicDigits } from "./text-utils.js";
 import { ensureServerConsent } from "./consent.js";
 import { storage, getAndroidBridge } from "./native-bridge.js";
 import { createAudioSlot } from "./audio-slot.js";
 import { t } from "./strings.js";
+import { closeAllPanels } from "./panels.js";
 
 // Two audio sources, each with its own reader-id scheme and URL shape.
 // Both lists are curated to the same set of reciters (by voice, not by
@@ -170,10 +171,16 @@ export function updateAudioUI() {
     menuPlayBtn.setAttribute("aria-label", playLabel);
     menuPlayBtn.title = playLabel;
 
+    // The menu's listen strip: names the playing aya, or offers to start
+    // from the page being read when nothing is loaded.
+    document.getElementById("btn-menu-audio-label").textContent =
+        audioState.sura != null ? nowPlayingLabel : t("audio.playFromPage");
+
     document.getElementById("btn-audio-stop").disabled = audioState.sura == null;
     document.getElementById("btn-menu-audio-stop").disabled = audioState.sura == null;
     document.getElementById("btn-menu").classList.toggle("audio-active", playing);
-    document.getElementById("menu-audio-dot").classList.toggle("active", playing);
+
+    updateMiniPlayer(playing, nowPlayingLabel);
 
     // Keeps Android's notification/lock-screen surface (a real
     // media-style notification, not anything drawn in the WebView) in
@@ -181,6 +188,37 @@ export function updateAudioUI() {
     if (bridge) {
         bridge.audioSetNowPlaying(audioState.sura != null ? nowPlayingLabel : "", playing);
     }
+}
+
+// The small control pill on the main view. Present while a playback
+// session exists (playing or paused), gone once stopped. Its label (the
+// playing sura/aya, tap to jump there) only shows while that aya is off
+// screen; when it's already in view the highlighted aya says it all and
+// the pill shrinks to just its two buttons. Also called by app.js on
+// every page change, since "off screen" depends on the visible page.
+export function updateMiniPlayer(playing, label) {
+    const mini = document.getElementById("mini-player");
+    if (!mini) return;
+    const active = audioState.sura != null;
+    mini.hidden = !active;
+    if (!active) return;
+
+    if (playing === undefined) playing = !activeAudio().paused;
+    if (label === undefined) {
+        label = `${suraNames[audioState.sura]} ﴿${toArabicDigits(audioState.aya + 1)}﴾`;
+    }
+
+    const playBtn = document.getElementById("btn-mini-playpause");
+    const playLabel = playing ? t("audio.action.pause") : t("audio.action.play");
+    playBtn.classList.toggle("is-playing", playing);
+    playBtn.setAttribute("aria-label", playLabel);
+    playBtn.title = playLabel;
+
+    const labelBtn = document.getElementById("btn-mini-label");
+    labelBtn.textContent = label;
+
+    const away = !!vp && !vp.isVisible(pageOfSuraAya(audioState.sura, audioState.aya));
+    mini.classList.toggle("away", away);
 }
 
 export function gotoPlayingAya(opts = {}) {
@@ -300,9 +338,11 @@ export function ensureAudioConsent() {
     return ensureServerConsent("audio", audioState.server, info.name, audioServerBaseUrl(audioState.server));
 }
 
+// Resolves true once playback was started, false if the user declined
+// the server-consent prompt.
 export async function playAya(sura, aya) {
     const allowed = await ensureAudioConsent();
-    if (!allowed) return;
+    if (!allowed) return false;
 
     cancelCrossfade();
     const active  = activeAudio();
@@ -320,6 +360,7 @@ export async function playAya(sura, aya) {
     gotoPlayingAya({ force: true });
     updateAudioUI();
     preloadNext();
+    return true;
 }
 
 export function stopAudio() {
@@ -338,10 +379,10 @@ export function stopAudio() {
 
 export function togglePlayPause() {
     if (audioState.sura == null) {
-        // nothing picked yet -- start from the beginning of the sura
-        // shown on the current page
-        playAya(suraOfPage[globalThis.page], 0);
-        return;
+        // nothing picked yet -- start from the first aya on the page being
+        // read (not the start of its sura, which could be far away)
+        const { sura, aya } = firstAyaOfPage(globalThis.page);
+        return playAya(sura, aya);
     }
     const a = activeAudio();
     if (a.paused) {
@@ -453,8 +494,29 @@ export function bindAudioUI() {
     document.getElementById("btn-audio-prev").addEventListener("click", () => shiftAya(-1));
     document.getElementById("btn-audio-next").addEventListener("click", () => shiftAya(1));
 
-    document.getElementById("btn-menu-audio-playpause").addEventListener("click", togglePlayPause);
+    // Menu strip: starting playback from here is "I'm done with the menu,
+    // let me read along", so close it once audio has actually started
+    // (not when the consent prompt was declined). Pause/resume/stop leave
+    // it open.
+    document.getElementById("btn-menu-audio-playpause").addEventListener("click", async () => {
+        const wasIdle = audioState.sura == null;
+        await togglePlayPause();
+        if (wasIdle && audioState.sura != null) closeAllPanels();
+    });
+    document.getElementById("btn-menu-audio-label").addEventListener("click", async () => {
+        if (audioState.sura == null) {
+            await togglePlayPause();
+            if (audioState.sura != null) closeAllPanels();
+        } else {
+            gotoPlayingAya({ force: true });
+            closeAllPanels();
+        }
+    });
     document.getElementById("btn-menu-audio-stop").addEventListener("click", stopAudio);
+
+    document.getElementById("btn-mini-playpause").addEventListener("click", togglePlayPause);
+    document.getElementById("btn-mini-stop").addEventListener("click", stopAudio);
+    document.getElementById("btn-mini-label").addEventListener("click", () => gotoPlayingAya({ force: true }));
 
     document.getElementById("server-select").addEventListener("change", e => {
         audioState.server = e.target.value;

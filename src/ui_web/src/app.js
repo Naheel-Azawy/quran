@@ -12,7 +12,7 @@ import { storage } from "./native-bridge.js";
 import { t, applyDocumentLanguage, applyTranslations } from "./strings.js";
 import * as audio from "./audio.js";
 import * as tafsir from "./tafsir.js";
-import { openPanel, theme_set, computePagesPerView, updateFontSize, bindPanelsUI } from "./panels.js";
+import { openPanel, closeAllPanels, theme_set, computePagesPerView, updateFontSize, bindPanelsUI } from "./panels.js";
 import {
     renderSuraList, syncStatus, bindNavigationUI, cacheNavigationDom,
     setViewPager as setNavViewPager, setEngine as setNavEngine,
@@ -161,6 +161,8 @@ async function main() {
                 // happens to land them back on the playing page
                 audio.setFollowPlayback(vp.isVisible(pageOfSuraAya(audio.audioState.sura, audio.audioState.aya)));
             }
+            // the mini player only names the playing aya while it is off screen
+            audio.updateMiniPlayer();
         },
     });
 
@@ -185,11 +187,16 @@ async function main() {
 
     document.getElementById("btn-aya-prev").addEventListener("click", () => stepShownAya(-1));
     document.getElementById("btn-aya-next").addEventListener("click", () => stepShownAya(1));
-    document.getElementById("btn-play-from-aya").addEventListener("click", () => {
-        if (ayaShown) audio.playAya(ayaShown.sura, ayaShown.aya);
+    document.getElementById("btn-play-from-aya").addEventListener("click", async () => {
+        if (!ayaShown) return;
+        // once audio has started, get the panel out of the way so the
+        // highlighted aya is visible (stays open if consent was declined)
+        if (await audio.playAya(ayaShown.sura, ayaShown.aya)) closeAllPanels();
     });
 
     window.addEventListener("keydown", event => {
+        // arrow keys must not turn pages behind an open panel
+        if (document.querySelector(".overlay-panel:not([hidden])")) return;
         if (document.activeElement && ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) {
             return;
         }

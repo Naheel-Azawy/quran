@@ -8,6 +8,10 @@ export let suraOfPage    = new Array(TOTAL_PAGES).fill(0);
 export let suraAyaCount  = new Array(TOTAL_SURAS).fill(0);
 export let pageOfLoc     = new Map();
 
+// First aya whose end marker appears on each page; lets "listen from
+// this page" start on something visible rather than at the sura's start.
+const firstLocOfPage = new Array(TOTAL_PAGES);
+
 // No wasm export gives us sura->page or aya->page directly, so this
 // builds the mapping once at startup by reading every page's own header
 // and aya markers (the same markers render.js's tag_ayas already parses
@@ -20,7 +24,7 @@ export function buildIndex(engine) {
         try {
             const lines = engine.get_page(p, false, false).split("\n");
             let { name, sura } = parseSuraLabel(parseHeaderLine(lines[0])[0]);
-            suraNames[sura]  = name;
+            suraNames[sura]  = name.replace(/&nbsp;/g, " ");
             suraOfPage[p]    = sura;
 
             const body = lines.slice(1).join("\n");
@@ -29,10 +33,11 @@ export function buildIndex(engine) {
             while ((m = markerRe.exec(body))) {
                 if (m[1]) {
                     ({ name, sura } = parseSuraLabel(m[1]));
-                    suraNames[sura] = name;
+                    suraNames[sura] = name.replace(/&nbsp;/g, " ");
                 } else {
                     const aya = Number(m[2]) - 1;
                     pageOfLoc.set((sura << 9) | aya, p);
+                    if (firstLocOfPage[p] === undefined) firstLocOfPage[p] = { sura, aya };
                     // this loop already visits every marker of every sura,
                     // so the highest one seen is the aya count
                     if (aya + 1 > suraAyaCount[sura]) {
@@ -48,6 +53,16 @@ export function buildIndex(engine) {
 
 export function firstPageOfSura(sura) {
     return pageOfLoc.get(sura << 9) ?? 0;
+}
+
+// First aya to play for "listen from this page". A page that holds no aya
+// end marker (one long aya spanning it) falls forward to the next page
+// that does, since that is the aya being read there.
+export function firstAyaOfPage(page) {
+    for (let p = page; p < TOTAL_PAGES; ++p) {
+        if (firstLocOfPage[p]) return { ...firstLocOfPage[p] };
+    }
+    return { sura: suraOfPage[page] || 0, aya: 0 };
 }
 
 export function pageOfSuraAya(sura, aya) {

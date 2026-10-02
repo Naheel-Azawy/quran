@@ -116,6 +116,12 @@ export const STRINGS = {
         "language.system":   "لغة النظام",
         "language.ar":       "العربية",
         "language.en":       "English",
+        "menu.searchPlaceholder": "ابحث في القرآن أو عن سورة أو صفحة…",
+        "navigation.gotoPage":    "الانتقال إلى الصفحة {page}",
+        "audio.playFromPage":     "استمع من هذه الصفحة",
+        "audio.settings":         "إعدادات الصوت",
+        "audio.mini.jump":        "الانتقال إلى الآية الجارية",
+        "menu.pageSlider":        "الصفحة",
     },
 
     en: {
@@ -215,6 +221,12 @@ export const STRINGS = {
         "language.system":   "System language",
         "language.ar":       "العربية",
         "language.en":       "English",
+        "menu.searchPlaceholder": "Search the Quran, a sura, or a page…",
+        "navigation.gotoPage":    "Go to page {page}",
+        "audio.playFromPage":     "Listen from this page",
+        "audio.settings":         "Audio settings",
+        "audio.mini.jump":        "Go to the playing aya",
+        "menu.pageSlider":        "Page",
     },
 };
 

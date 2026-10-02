@@ -212,6 +212,67 @@ input, button, select {
 
     .fab-menu:hover  { transform: translateX(-50%) scale(1.06); }
     .fab-menu:active { transform: translateX(-50%) scale(.92); }
+
+    .mini-player {
+        top:       auto;
+        left:      .6em;
+        max-width: calc(50vw - 1.6em);
+    }
+}
+
+/* ---------- Mini audio player (main view, only while a session exists) ---------- */
+
+.mini-player {
+    position:      fixed;
+    z-index:       8;
+    top:           1em;
+    left:          1em;
+    display:       flex;
+    align-items:   center;
+    gap:           .1em;
+    max-width:     calc(100vw - 5em);
+    padding:       .15em;
+    background:    var(--bg);
+    border:        1px solid var(--accent);
+    border-radius: 999px;
+    opacity:       .9;
+    transition:    background-color .25s ease, border-color .25s ease;
+}
+
+.mini-player[hidden] {
+    display: none;
+}
+
+.mini-player .icon-btn {
+    width:         1.8em;
+    height:        1.8em;
+    border:        none;
+    border-radius: 50%;
+    color:         var(--accent);
+}
+
+.mini-player .audio-playpause {
+    background: var(--accent);
+    color:      var(--bg);
+}
+
+/* names the playing aya only while it is off screen */
+.mini-label {
+    display:       none;
+    min-width:     0;
+    padding:       0 .5em;
+    border:        none;
+    background:    transparent;
+    cursor:        pointer;
+    overflow:      hidden;
+    text-overflow: ellipsis;
+    white-space:   nowrap;
+    unicode-bidi:  plaintext;
+    font-size:     .9em;
+}
+
+.mini-player.away .mini-label {
+    display: block;
 }
 
 /* ---------- Mushaf page ---------- */
@@ -511,89 +572,139 @@ input, button, select {
 
 /* ---------- Main menu ---------- */
 
-.menu-list {
-    flex:      1 1 auto;
-    margin:    0;
-    padding:   .4em;
+.panel-menu.searching {
+    height:     min(36em, 80dvh);
+    max-height: 80vh;
+}
+
+.menu-home {
+    flex:       1 1 auto;
+    min-height: 0;
     overflow-y: auto;
-    list-style: none;
 }
 
-.menu-item {
-    width:       100%;
-    display:     flex;
-    align-items: center;
-    gap:         .8em;
-    padding:     .9em .6em;
-    background:  transparent;
-    border:      none;
-    border-radius: var(--radius);
-    cursor:      pointer;
-    font-size:   1em;
-    text-align:  start;
-    transition:  background-color .15s ease;
-}
-
-.menu-item:hover  { background: var(--bg2); }
-.menu-item:active { transform: scale(.98); }
-
-.menu-item-icon {
-    flex:            none;
-    display:         flex;
-    align-items:     center;
-    justify-content: center;
-    width:           1.6em;
-    height:          1.6em;
-    color:           var(--accent);
-}
-
-.menu-item-label {
-    flex:      1 1 auto;
-    min-width: 0;
-    text-align: start;
-}
-
-.menu-item-audio-dot {
+.menu-home[hidden],
+.panel-menu .result-list[hidden] {
     display: none;
 }
 
-.menu-item-audio-dot.active {
-    display:       block;
-    flex:          none;
-    width:         .5em;
-    height:        .5em;
-    border-radius: 50%;
-    background:    var(--accent);
-    animation:     audio-pulse 1.2s ease-in-out infinite;
+.menu-section {
+    padding:    .7em .8em;
+    border-top: 1px solid var(--bg2);
 }
 
-.menu-item-chevron {
-    flex:    none;
-    display: flex;
-    color:   var(--fg);
-    opacity: .5;
+.menu-section:first-child {
+    border-top: none;
 }
 
-.menu-row.menu-audio-row {
+/* where am I + page slider */
+.menu-sura-name {
+    margin-bottom: .4em;
+    font-weight:   bold;
+    color:         var(--accent);
+    min-height:    1.2em;
+}
+
+.menu-page-row {
     display:     flex;
     align-items: center;
-    gap:         .2em;
-    padding:     0 .3em;
+    gap:         .8em;
 }
 
-.menu-audio-row .menu-item {
-    flex:      1 1 auto;
-    min-width: 0;
+/* pages run right-to-left in a mushaf regardless of the UI language */
+#page-slider {
+    flex:        1 1 auto;
+    min-width:   0;
+    direction:   rtl;
+    padding:     0;
+    border:      none;
+    background:  transparent;
+    accent-color: var(--accent);
+    cursor:      pointer;
 }
 
-.menu-quick-btn {
-    flex:  none;
+#page-input {
+    flex:       none;
+    width:      4.5em;
+    padding:    .4em;
+    text-align: center;
+}
+
+/* listen strip */
+.menu-audio-strip {
+    display:     flex;
+    align-items: center;
+    gap:         .4em;
+}
+
+.menu-audio-strip .audio-playpause {
+    width:  2.2em;
+    height: 2.2em;
+}
+
+.menu-audio-label {
+    flex:       1 1 auto;
+    min-width:  0;
+    padding:    .5em .3em;
+    border:     none;
+    background: transparent;
+    cursor:     pointer;
+    text-align: start;
+    overflow:   hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.menu-audio-label:hover {
     color: var(--accent);
 }
 
-.menu-quick-btn:disabled {
+.menu-audio-strip .icon-btn:disabled {
     opacity: .35;
     cursor:  default;
+}
+
+/* shortcuts */
+.menu-tiles {
+    display:    flex;
+    gap:        .5em;
+    padding:    .7em .8em;
+    border-top: 1px solid var(--bg2);
+}
+
+.menu-tile {
+    flex:            1 1 0;
+    min-width:       0;
+    display:         flex;
+    flex-direction:  column;
+    align-items:     center;
+    gap:             .4em;
+    padding:         .7em .3em;
+    background:      transparent;
+    border:          1px solid var(--bg2);
+    border-radius:   var(--radius);
+    cursor:          pointer;
+    font-size:       .85em;
+    text-align:      center;
+    transition:      background-color .15s ease, transform .1s ease;
+}
+
+.menu-tile:hover  { background: var(--bg2); }
+.menu-tile:active { transform: scale(.96); }
+
+.menu-tile-icon {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    color:           var(--accent);
+}
+
+/* theme + diacritics */
+.menu-display {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    gap:             .8em;
 }
 
 /* ---------- Sura index (custom list, not a native <select>) ---------- */
