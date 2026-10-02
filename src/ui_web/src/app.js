@@ -12,6 +12,7 @@ import { storage } from "./native-bridge.js";
 import { t, applyDocumentLanguage, applyTranslations } from "./strings.js";
 import * as audio from "./audio.js";
 import * as tafsir from "./tafsir.js";
+import { keepScreenOn } from "./wake-lock.js";
 import { openPanel, closeAllPanels, theme_set, computePagesPerView, updateFontSize, bindPanelsUI } from "./panels.js";
 import {
     renderSuraList, syncStatus, bindNavigationUI, cacheNavigationDom,
@@ -131,6 +132,7 @@ async function main() {
 
     theme_set(storage.getItem("quran-theme") || "black");
     handle_pwa();
+    keepScreenOn();
 
     let pagesPerView = computePagesPerView();
     output.classList.toggle("two-page", pagesPerView === 2);

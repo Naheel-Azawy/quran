@@ -168,6 +168,14 @@ public class AndroidBridge {
         });
     }
 
+    // ---------- screen (see wake-lock.js) ----------
+
+    /** Keeps the screen on while the app is in the foreground (FLAG_KEEP_SCREEN_ON). */
+    @JavascriptInterface
+    public void setKeepScreenOn(final boolean keepOn) {
+        activity.runOnUiThread(() -> activity.applyKeepScreenOn(keepOn));
+    }
+
     // ---------- native -> JS ----------
 
     /** Called by MainActivity when a notification/lock-screen control is tapped. */

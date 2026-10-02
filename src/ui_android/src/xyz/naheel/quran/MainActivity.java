@@ -17,6 +17,7 @@ import android.text.Html;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.WindowInsetsController;
 import android.webkit.ConsoleMessage;
 import android.webkit.PermissionRequest;
@@ -229,6 +230,24 @@ public class MainActivity extends Activity {
         // token, and formatting an int in decimal isn't one.
         actionBar.setTitle(Html.fromHtml("<font color='" + fg + "'>" + title + "</font>"));
         getWindow().getDecorView().setBackgroundColor(background);
+    }
+
+    /**
+     * Keeps the display on while this Activity is in the foreground (the
+     * flag has no effect once the Activity is stopped, so the screen can
+     * still time out normally when the app is backgrounded -- audio keeps
+     * playing through PlaybackService regardless). Must run on the UI
+     * thread; AndroidBridge.setKeepScreenOn() takes care of that hop.
+     * Needs no manifest permission, unlike a PowerManager wake lock. This
+     * is what the web side's wake-lock.js calls, since a WebView does not
+     * necessarily implement the JS Screen Wake Lock API itself.
+     */
+    void applyKeepScreenOn(boolean keepOn) {
+        if (keepOn) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
     }
 
     @Override
