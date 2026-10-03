@@ -35,6 +35,8 @@ EMCC_FLAGS = -Wall $(FLAGS_COMMON) -DUNDER_WASM -s STANDALONE_WASM=1 -s EXPORTED
 # renderer if you'd rather not depend on it.
 ICON_SVG        = src/ui_web/public/res/ic_base.svg
 ICON_BG         = black
+# Same color as above, in the #rrggbb form Android XML needs (keep in sync).
+ICON_BG_HEX     = \#000000
 RSVG_CONVERT   ?= rsvg-convert
 
 # DATA ################################################
@@ -192,6 +194,7 @@ $(ANDROID_OUT)/assets/index.html: build/web/.stamp
 	rm -rf $(ANDROID_OUT)/assets
 	mkdir -p $(ANDROID_OUT)/assets
 	cp -r build/web/. $(ANDROID_OUT)/assets/
+	rm $(ANDROID_OUT)/assets/res/icon* $(ANDROID_OUT)/assets/res/screenshot*
 
 # Set to 1 to bring back flat raster PNG launcher icons (one bitmap per
 # density bucket, rendered via rsvg-convert -- exactly what this project
@@ -200,24 +203,42 @@ $(ANDROID_OUT)/assets/index.html: build/web/.stamp
 # render <adaptive-icon> the way you'd like. Off by default; the PNG
 # code path is kept rather than deleted specifically so this stays a
 # one-variable toggle instead of a revert.
-ANDROID_PNG_ICONS ?= 1
+ANDROID_PNG_ICONS ?= 0
 
 # name:pixel-size pairs for each Android density bucket -- only used when
 # ANDROID_PNG_ICONS=1.
 ANDROID_ICON_SIZES = mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192
 
+# SVG -> VectorDrawable converter, installed once into build/ (pinned to the
+# version this was tested with) and driven by tools/svg-to-vector.js through
+# NODE_PATH. Only needed when ANDROID_PNG_ICONS=0.
+S2V_DIR   = $(ANDROID_OUT)/s2v
+S2V_STAMP = $(S2V_DIR)/.stamp
+
+$(S2V_STAMP):
+	mkdir -p $(S2V_DIR)
+	cd $(S2V_DIR) && npm init -y >/dev/null && \
+		npm install svg2vectordrawable@2.9.1 --no-audit --no-fund --loglevel=error
+	touch $@
+
 # res-merged/ = src/ui_android/res, plus the launcher icon. By default
-# this is generated straight from ICON_SVG as Android vector-drawable XML
-# (via svg2vectordrawable, fetched on demand through npx): a vector
-# foreground for API 26+'s <adaptive-icon> (see
-# res/mipmap-anydpi-v26/ic_launcher.xml, checked in statically -- it just
-# references the two files generated here) plus a flat,
-# background-baked-in fallback vector for API 21-25 (which doesn't
-# understand <adaptive-icon> at all; see tools/gen-legacy-icon.js). Set
-# ANDROID_PNG_ICONS=1 to render flat PNGs per density instead (see above).
-# Either way: same source, same black background.
+# (ANDROID_PNG_ICONS=1) flat PNGs are rendered per density. With
+# ANDROID_PNG_ICONS=0 the icon is generated from ICON_SVG as vector XML
+# instead:
+#   - drawable/ic_launcher_foreground.xml: the converted art (see
+#     tools/svg-to-vector.js for why the converter is driven from a script
+#     rather than the s2v command line), used by the checked-in
+#     res/mipmap-anydpi-v26/ic_launcher.xml <adaptive-icon> on API 26+.
+#     That file is kept as-is here; it was previously deleted at this
+#     point, which silently threw away the adaptive icon.
+#   - mipmap-anydpi-v21/ic_launcher.xml: one flat vector with the
+#     background baked in, for API 21-25 (no <adaptive-icon> support; see
+#     tools/gen-legacy-icon.js).
+#   - values/ic_launcher_background.xml, only if res/ does not already
+#     define it, since the adaptive icon references @color/ic_launcher_background.
 $(ANDROID_OUT)/res-merged/.stamp: $(ANDROID_RES) $(ICON_SVG) \
-		src/ui_android/tools/gen-legacy-icon.js
+		src/ui_android/tools/gen-legacy-icon.js src/ui_android/tools/svg-to-vector.js \
+		$(if $(filter 1,$(ANDROID_PNG_ICONS)),,$(S2V_STAMP))
 	rm -rf $(ANDROID_OUT)/res-merged
 	mkdir -p $(ANDROID_OUT)/res-merged
 	cp -r src/ui_android/res/. $(ANDROID_OUT)/res-merged/
@@ -230,14 +251,18 @@ ifeq ($(ANDROID_PNG_ICONS),1)
 			-o $(ANDROID_OUT)/res-merged/mipmap-$$density/ic_launcher.png $(ICON_SVG); \
 	done
 else
-# vector icon is broken, TODO: fix
 	mkdir -p $(ANDROID_OUT)/res-merged/drawable $(ANDROID_OUT)/res-merged/mipmap-anydpi-v21
-	npx --yes svg2vectordrawable@2 -i $(ICON_SVG) \
-		-o $(ANDROID_OUT)/res-merged/drawable/ic_launcher_foreground.xml
+	NODE_PATH=$(abspath $(S2V_DIR))/node_modules node src/ui_android/tools/svg-to-vector.js \
+		$(ICON_SVG) $(ANDROID_OUT)/res-merged/drawable/ic_launcher_foreground.xml
 	node src/ui_android/tools/gen-legacy-icon.js \
 		$(ANDROID_OUT)/res-merged/drawable/ic_launcher_foreground.xml \
-		$(ANDROID_OUT)/res-merged/mipmap-anydpi-v21/ic_launcher.xml
-	rm -f $(ANDROID_OUT)/res-merged/mipmap-anydpi-v26/ic_launcher.xml
+		$(ANDROID_OUT)/res-merged/mipmap-anydpi-v21/ic_launcher.xml '$(ICON_BG_HEX)'
+	test -f $(ANDROID_OUT)/res-merged/mipmap-anydpi-v26/ic_launcher.xml || \
+		{ echo "missing res/mipmap-anydpi-v26/ic_launcher.xml (the adaptive icon)"; exit 1; }
+	grep -rqs 'name="ic_launcher_background"' $(ANDROID_OUT)/res-merged/values || { \
+		mkdir -p $(ANDROID_OUT)/res-merged/values; \
+		printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">%s</color>\n</resources>\n' \
+			'$(ICON_BG_HEX)' > $(ANDROID_OUT)/res-merged/values/ic_launcher_background.xml; }
 endif
 	touch $@
 
