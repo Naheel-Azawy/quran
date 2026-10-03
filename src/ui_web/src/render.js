@@ -3,6 +3,62 @@ import { suraNames, suraAyaCount } from "./quran-index.js";
 
 const LINES_PER_PAGE = 16;
 
+// ---------------------------------------------------------------------------
+// Native لا + hamza glyphs (me-quran font)
+//
+// The Tanzil text spells the hamza-in-the-middle case as
+//     ل  [marks]  ـ  [marks]  U+0654  ا
+// which no font can shape as one ligature. me-quran ships the glyphs for it
+// (lam_hamza_arabicalef.zz20 / lamfinal_hamza_arabicalef.zz20) and its GSUB
+// builds them from   ل  U+0621  ا   (marks in between are ignored by the
+// lookup), so the text is rewritten to that form before it reaches the DOM.
+//
+// Enable/disable:
+//   - set NATIVE_LAM_HAMZA_ALEF below, or
+//   - call setNativeLamHamzaAlef(true|false) at runtime (re-render after), or
+//   - open the page with ?lamhamza=0 (off) or ?lamhamza=1 (on).
+//
+// Only meaningful while the page font is me-quran: with any other font the
+// U+0621 shows as a separate hamza letter, so switch it off for those.
+// ---------------------------------------------------------------------------
+const NATIVE_LAM_HAMZA_ALEF = true;
+
+let nativeLamHamzaAlef = (() => {
+    try {
+        const q = new URLSearchParams(globalThis.location?.search || "").get("lamhamza");
+        if (q === "0") return false;
+        if (q === "1") return true;
+    } catch (_) { /* no location (tests) */ }
+    return NATIVE_LAM_HAMZA_ALEF;
+})();
+
+export function setNativeLamHamzaAlef(on) {
+    nativeLamHamzaAlef = !!on;
+}
+
+export function isNativeLamHamzaAlef() {
+    return nativeLamHamzaAlef;
+}
+
+const TASHKEEL = "\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u08D4-\u08FF";
+const ALEFS    = "\u0627\u0623\u0625\u0622\u0671";
+// ل, lam marks, tatweel, hamza marks / more tatweel, alef. The tatweel is
+// required: it is what the source text puts in front of the combining hamza.
+const LAM_TATWEEL_ALEF_RE = new RegExp(
+    `\u0644([${TASHKEEL}\u0621]*)\u0640([${TASHKEEL}\u0621\u0640]*)([${ALEFS}])`, "g");
+const DROP_RE = /[\u0640\u0621\u0654\u0655]/g; // tatweel and any hamza form
+
+// full:   ل ْ ـ َ ٔ ا   ->   ل ْ ء َ ا    (lam marks, ء, hamza marks)
+// simple: ل ـ ا         ->   ل ا          (simple text carries no hamza, but the
+//                                          leftover tatweel would split the pair)
+function fixLamHamzaAlef(text, simple) {
+    return text.replace(LAM_TATWEEL_ALEF_RE, (_, lamMarks, hamzaMarks, alef) =>
+        simple
+            ? "\u0644" + alef
+            : "\u0644" + lamMarks.replace(DROP_RE, "") + "\u0621" +
+              hamzaMarks.replace(DROP_RE, "") + alef);
+}
+
 // These two decorative SVGs (the aya-end roundel and the sura-header
 // banner) are art assets fetched once at startup, not part of icons.js's
 // small UI-chrome icon set.
@@ -138,6 +194,12 @@ export function render(engine, page, simple) {
     // TODO: pages 0-1 render extra lines that don't belong on the page;
     // cut them off here until that's fixed upstream
     let body = lines.slice(1, page <= 1 ? 9 : LINES_PER_PAGE);
+
+    // rewrite before anything below tags or measures the text; the aya and
+    // sura regexes in tag_ayas never look at these characters
+    if (nativeLamHamzaAlef) {
+        body = body.map(l => fixLamHamzaAlef(l, simple));
+    }
 
     // non-breaking spaces if the line is centered (starts with a space)
     body = body.map(l => l[0] == ' ' ? l.replace(/ /g, "&nbsp;") : l);

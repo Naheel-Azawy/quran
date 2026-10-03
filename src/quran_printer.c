@@ -99,26 +99,47 @@ static size_t center_swprintf(int width, wchar_t *buf, size_t size,
 #undef CENTER_FMT
 }
 
-// TODO: shouldn't add after between لا or even if there're harakat or hamza in between
+static bool is_alef(wchar_t c) {
+    switch (c) {
+    case L'ا':
+    case L'أ':
+    case L'إ':
+    case L'آ':
+    case L'ٱ':
+    case L'ٲ':
+    case L'ٳ':
+    case L'ٵ':
+        return true;
+    }
+    return false;
+}
+
+// Hamza as a standalone letter or as a combining mark
+static bool is_hamza(wchar_t c) {
+    return c == L'ء' || c == L'\u0654' || c == L'\u0655';
+}
+
+// True if c is a ل that starts the لا ligature: it is followed by an alef,
+// possibly with harakat, hamza or tatweel in between. next is the char after
+// c. The source text itself carries a tatweel before a combining hamza
+// (e.g. ٱلْـَٔاخِرَةِ), so an existing tatweel must not hide the ligature.
+static bool is_lam_alef(wchar_t c, const wchar_t *next) {
+    if (c != L'ل' || next == NULL) return false;
+    while (*next && (quran_is_tashkeel(*next) || is_hamza(*next) ||
+                     *next == L'ـ')) ++next;
+    return is_alef(*next);
+}
 
 static bool can_add_tatweel(wchar_t c, wchar_t *next_ptr) {
     if (next_ptr != NULL) {
+        // Never split the لا ligature, even with harakat or hamza between
+        if (is_lam_alef(c, next_ptr)) return false;
         // false if at the end of the word
         if (*next_ptr == L'\0' || *next_ptr == L' ') return false;
         while (*next_ptr && quran_is_tashkeel(*next_ptr)) ++next_ptr;
         if (*next_ptr == L'\0' || *next_ptr == L' ') return false;
         // Hamza never joins to the letter before it
         if (*next_ptr == L'ء') return false;
-        if (c == L'ل') {
-            // Keep the لا ligature, it is counted as one char
-            switch (*next_ptr) {
-            case L'ا':
-            case L'أ':
-            case L'إ':
-            case L'آ':
-                return false;
-            }
-        }
     }
     // Not after: ا د ذ ر ز و ء
     // Not before: ء
@@ -165,16 +186,10 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
                 ++char_count;
             }
 
-            if (line[i + 1] && line[i] == L'ل') {
-                // Count لا variations as one char
-                switch (line[i + 1]) {
-                case L'ا':
-                case L'أ':
-                case L'إ':
-                case L'آ':
-                    --char_count;
-                    break;
-                }
+            if (is_lam_alef(line[i], &line[i + 1])) {
+                // Count لا variations as one char (harakat or hamza
+                // in between do not break the ligature)
+                --char_count;
             }
 
             if (can_add_tatweel(line[i], &line[i + 1])) {
