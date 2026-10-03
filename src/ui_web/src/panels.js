@@ -219,7 +219,7 @@ export function updateFontSize(pagesPerView) {
 // differently than a desktop browser, so it needs a smaller stretch
 // factor there (1.2) than desktop's default (1.3). Hardcoded rather than
 // measured: set once, here, for the lifetime of the page.
-document.documentElement.style.setProperty("--quran-line-stretch", bridge ? "1.2" : "1.3");
+document.documentElement.style.setProperty("--quran-line-stretch", bridge ? "1.4" : "1.5");
 
 // ---------- back button (Android hardware back *and* browser back) ----------
 //
