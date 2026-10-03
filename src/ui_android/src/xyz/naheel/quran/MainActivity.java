@@ -143,7 +143,21 @@ public class MainActivity extends Activity {
                 if (cmd != null) bridge.dispatchAudioControl(cmd);
             }
         };
-        registerReceiver(controlReceiver, new IntentFilter(PlaybackService.ACTION_CONTROL));
+        //
+        // Targeting API 34 (Android 14), registering a receiver for
+        // anything other than system broadcasts *requires* stating whether
+        // it is exported, or registerReceiver() throws SecurityException
+        // -- which, in onCreate(), is the crash-on-launch this replaces.
+        // NOT_EXPORTED is right here: the only sender is this app's own
+        // PlaybackService, and other apps must not be able to drive
+        // playback by broadcasting to us. The flag overload only exists
+        // from API 33; older versions have no such requirement.
+        IntentFilter controlFilter = new IntentFilter(PlaybackService.ACTION_CONTROL);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(controlReceiver, controlFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(controlReceiver, controlFilter);
+        }
 
         webView.loadUrl("https://" + ASSET_HOST + ASSET_PATH_PREFIX + "index.html");
     }
