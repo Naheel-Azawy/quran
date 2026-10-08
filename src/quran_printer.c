@@ -152,6 +152,29 @@ static bool can_add_tatweel(wchar_t c, wchar_t *next_ptr) {
     return false;
 }
 
+// True if the word starting at w is the name of God, with or without a
+// one-letter prefix (و ف ب ت ك): ٱللَّهِ، لِلَّهِ، وَٱللَّهُ، بِٱللَّهِ، وَلِلَّهِ...
+// Harakat, stop signs, dagger alef and existing tatweel are ignored, so the
+// match works on the bare letters. The word ends at whitespace or NUL.
+static bool is_allah_word(const wchar_t *w) {
+    wchar_t l[8];
+    size_t  n = 0;
+    for (; *w && !iswspace(*w); ++w) {
+        if (quran_is_tashkeel(*w) || *w == L'ـ') continue;
+        if (n == 7) return false; // too long to be the name
+        l[n++] = *w;
+    }
+    l[n] = L'\0';
+
+    size_t p = 0;
+    if (n >= 4 && wcschr(L"وفبتك", l[p]) != NULL &&
+        (is_alef(l[p + 1]) || l[p + 1] == L'ل')) {
+        ++p;
+    }
+    if (is_alef(l[p])) ++p;
+    return n - p == 3 && l[p] == L'ل' && l[p + 1] == L'ل' && l[p + 2] == L'ه';
+}
+
 static size_t justify_line(wchar_t *out, wchar_t *line,
                            int target_width, bool nest, float percent) {
     size_t len = wcslen(line);
@@ -172,6 +195,7 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
     int tatweel_slots = 0;
     int tatweel_count = 0;
     int in_word       = 0;
+    bool no_tatweel   = false; // current word is the name of God
 
     for (size_t i = 0; line[i]; i++) {
         if (!iswspace(line[i])) {
@@ -179,6 +203,7 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
                 // Count words
                 ++word_count;
                 in_word = 1;
+                no_tatweel = is_allah_word(&line[i]);
             }
 
             if (is_printable(line[i])) {
@@ -192,7 +217,7 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
                 --char_count;
             }
 
-            if (can_add_tatweel(line[i], &line[i + 1])) {
+            if (!no_tatweel && can_add_tatweel(line[i], &line[i + 1])) {
                 ++tatweel_slots;
             }
         } else {
@@ -260,9 +285,10 @@ static size_t justify_line(wchar_t *out, wchar_t *line,
 
     while (*ptr) {
         // Copy word
+        no_tatweel = is_allah_word(ptr);
         while (*ptr && !iswspace(*ptr)) {
             *dst++ = *ptr++;
-            if (tatweel_count > 0 &&
+            if (tatweel_count > 0 && !no_tatweel &&
                 can_add_tatweel(*(ptr - 1), ptr)) {
                 // Copy the tashkeel first, so it stays on the letter
                 // and not on the tatweel
