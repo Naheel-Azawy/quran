@@ -501,6 +501,13 @@ static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
             }
             PPRINT(L"%C", c);
         }
+        // The same applies to the last aya of a sura, even mid-page (e.g.
+        // {62} of sura 53 on p528): the table generator derives that line's
+        // break from the last text word, so it lands before the marker. Left
+        // alone, {62} was stranded at the start of the next line, the sura
+        // header was appended to it, and justify_line then stretched the
+        // header with tatweel because the line no longer began with a space.
+        //
         // A break at the gap before an aya marker is legitimate mid-page:
         // the marker simply opens the next line, joined by the words that
         // follow it (e.g. {54} on p7).
@@ -515,7 +522,7 @@ static size_t swprint_page_base(wchar_t *buf, int page, bool simple) {
         // keep the marker's word slot so w_count stays in step with the
         // table, but carry the break over to after the marker.
         quran_loc_t loc_next = QURAN_LOC_NEXT(loc);
-        if (loc_next >= loc_next_page) {
+        if (loc_next >= loc_next_page || QURAN_AYA(loc_next) == 0) {
             bool brk = has_break_at(page, w_count);
             PPRINT(L" ");
             ++w_count;

@@ -290,7 +290,7 @@ input, button, select {
 #output {
     position:        relative;
     margin:          auto;
-    width:           min(30em, 100%);
+    width:           min(31em, 100%);
     height:          min(46em, 100%);
     max-width:       100%;
     max-height:      100%;
@@ -300,7 +300,7 @@ input, button, select {
     text-align-last: justify;
     overflow-y:      hidden;
     transition:      border-color .25s ease;
-    line-height:     1.8em;
+    line-height:     normal;
 }
 
 /* Book/spread mode: two pages shown side by side. Toggled by main.js
@@ -371,7 +371,7 @@ input, button, select {
        panels.js sets it to 1.2 instead on Android specifically, since its
        WebView renders this same font's metrics slightly differently than
        a desktop browser does at the default value. */
-    transform:        scaleY(var(--quran-line-stretch, 1.5));
+    transform:        scaleY(var(--quran-line-stretch, 1.3));
     /* The wasm printer already decides where all 16 lines break, and each
        one ends in an explicit <br>, so nothing here should ever soft-wrap.
        That was implicit before (tag_ayas turns every space into &nbsp;,
@@ -461,7 +461,7 @@ input, button, select {
        own compressed line metrics. That correction is meant for text
        glyphs, not this marker's circle/digit, so cancel it back out here
        -- otherwise the circle renders as an ellipse. */
-    transform: scaleY(calc(1 / var(--quran-line-stretch, 1.5)));
+    transform: scaleY(calc(1 / var(--quran-line-stretch, 1.3)));
 }
 
 .aya-marker-svg {

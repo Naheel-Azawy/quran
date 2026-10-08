@@ -189,7 +189,7 @@ export function theme_set(name) {
 // that wide *relative to its height* (with a little slack so the mode
 // doesn't flip back and forth right at the edge), and wide enough in
 // absolute terms that neither half-page becomes illegible.
-const PAGE_CHARS_W = 30; // same dims as css at #output
+const PAGE_CHARS_W = 31; // same dims as css at #output
 const PAGE_CHARS_H = 46;
 const PAGE_ASPECT  = PAGE_CHARS_W / PAGE_CHARS_H;
 
@@ -219,7 +219,7 @@ export function updateFontSize(pagesPerView) {
 // differently than a desktop browser, so it needs a smaller stretch
 // factor there (1.2) than desktop's default (1.3). Hardcoded rather than
 // measured: set once, here, for the lifetime of the page.
-document.documentElement.style.setProperty("--quran-line-stretch", bridge ? "1.4" : "1.5");
+document.documentElement.style.setProperty("--quran-line-stretch", bridge ? "1.2" : "1.3");
 
 // ---------- back button (Android hardware back *and* browser back) ----------
 //
