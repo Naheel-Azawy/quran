@@ -8,6 +8,7 @@
 
 #include "../quran_core.h"
 #include "../quran_printer.h"
+#include "tui.h"
 #include "../../build/version.h"
 
 void read_wchar_test() {
@@ -228,8 +229,11 @@ void foo() {
 }
 
 void help(char *bin) {
-    wprintf(L"Usage: %s [-slpafxh] [SURA]\n", bin);
+    wprintf(L"Usage: %s [-slpafixhtb] [SURA]\n", bin);
     wprintf(L"Version %s\n", QURAN_VERSION);
+    wprintf(L"  (no arguments)   interactive reader, same as -t\n");
+    wprintf(L"  -t [PAGE]        interactive reader; opens PAGE, default the last viewed\n");
+    wprintf(L"  -b               reader: no fribidi, leave the text to the terminal\n");
     wprintf(L"  -s               simple text; no tashkeel\n");
     wprintf(L"  -l               print as a simple list\n");
     wprintf(L"  -p <PAGE>        print a page\n");
@@ -243,7 +247,8 @@ void help(char *bin) {
 }
 
 int main(int argc, char **argv) {
-    setlocale(LC_ALL, "en_US.UTF-8");
+    if (!setlocale(LC_ALL, "en_US.UTF-8") && !setlocale(LC_ALL, "C.UTF-8"))
+        setlocale(LC_ALL, "");
 
     bool simple   = false;
     bool list     = false;
@@ -252,10 +257,12 @@ int main(int argc, char **argv) {
     bool find     = false;
     bool index    = false;
     bool exp      = false;
+    bool tui      = false;
+    bool no_bidi  = false;
     char *args[2] = {NULL};
 
     int opt;
-    while ((opt = getopt(argc, argv, "slpafixh")) != -1) {
+    while ((opt = getopt(argc, argv, "slpafixhtb")) != -1) {
         switch (opt) {
         case 's': simple = true; break;
         case 'l': list   = true; break;
@@ -264,12 +271,27 @@ int main(int argc, char **argv) {
         case 'f': find   = true; break;
         case 'i': index  = true; break;
         case 'x': exp    = true; break;
+        case 't': tui    = true; break;
+        case 'b': no_bidi = true; break;
         case 'h': help(argv[0]); break;
         default:  help(argv[0]);
         }
     }
     for (int i = 0; optind < argc && i < 2; ++optind, ++i) {
         args[i] = argv[optind];
+    }
+
+    // no arguments on a terminal: the interactive reader
+    if (argc == 1 && isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) tui = true;
+
+    if (tui) {
+        tui_opts_t opts = {
+            .simple = simple,
+            .list   = list,
+            .bidi   = !no_bidi,
+            .page   = (args[0] != NULL && atoi(args[0]) > 0) ? atoi(args[0]) - 1 : -1,
+        };
+        return tui_run(&opts);
     }
 
     if (exp) { // experimental
