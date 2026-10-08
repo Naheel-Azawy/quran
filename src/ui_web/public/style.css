@@ -773,6 +773,35 @@ input, button, select {
     opacity:   .75;
 }
 
+/* A juzu row sits between the suras at the page where it starts: a slim
+   divider rather than a full sura row. */
+.juzu-item {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    gap:             .8em;
+    padding:         .35em .8em;
+    border-top:      1px solid var(--bg2);
+    color:           var(--accent);
+    font-size:       .85em;
+    font-weight:     bold;
+    cursor:          pointer;
+    transition:      background-color .15s ease;
+}
+
+.juzu-item:first-child {
+    border-top: none;
+}
+
+.juzu-item:hover {
+    background: var(--bg2);
+}
+
+.juzu-meta {
+    font-weight: normal;
+    opacity:     .8;
+}
+
 .sura-empty {
     padding:    1.2em .8em;
     text-align: center;

@@ -1,72 +1,50 @@
-import { parseHeaderLine, parseSuraLabel } from "./text-utils.js";
-
 export const TOTAL_PAGES = 604;
 export const TOTAL_SURAS = 114;
+export const TOTAL_JUZUS = 30;
 
 export let suraNames     = new Array(TOTAL_SURAS).fill("");
 export let suraOfPage    = new Array(TOTAL_PAGES).fill(0);
 export let suraAyaCount  = new Array(TOTAL_SURAS).fill(0);
-export let pageOfLoc     = new Map();
 
-// First aya whose end marker appears on each page; lets "listen from
-// this page" start on something visible rather than at the sura's start.
-const firstLocOfPage = new Array(TOTAL_PAGES);
+// Suras and juzus together, in page order, as [{ kind: "sura" | "juzu",
+// number, page, loc }] with every number zero-based. Filled by buildIndex()
+// from the engine's own index (quran_index in quran_core.c), so the web UI
+// and the CLI's -i list the same thing in the same order.
+export const indexEntries = [];
 
-// No wasm export gives us sura->page or aya->page directly, so this
-// builds the mapping once at startup by reading every page's own header
-// and aya markers (the same markers render.js's tag_ayas already parses
-// for on-page rendering). just=false skips justification, which only
-// pads spacing and never changes line breaks or marker positions, so
-// this is a cheap, exact stand-in for the fully rendered page here.
-export function buildIndex(engine) {
-    // TODO: add C API and remove this
-    for (let p = 0; p < TOTAL_PAGES; ++p) {
-        try {
-            const lines = engine.get_page(p, false, false).split("\n");
-            let { name, sura } = parseSuraLabel(parseHeaderLine(lines[0])[0]);
-            suraNames[sura]  = name.replace(/&nbsp;/g, " ");
-            suraOfPage[p]    = sura;
+let engine = null; // set by buildIndex(); the lookups below ask it directly
 
-            const body = lines.slice(1).join("\n");
-            const markerRe = /--\{([^}]+)\}--|\{(\d+)\}/g;
-            let m;
-            while ((m = markerRe.exec(body))) {
-                if (m[1]) {
-                    ({ name, sura } = parseSuraLabel(m[1]));
-                    suraNames[sura] = name.replace(/&nbsp;/g, " ");
-                } else {
-                    const aya = Number(m[2]) - 1;
-                    pageOfLoc.set((sura << 9) | aya, p);
-                    if (firstLocOfPage[p] === undefined) firstLocOfPage[p] = { sura, aya };
-                    // this loop already visits every marker of every sura,
-                    // so the highest one seen is the aya count
-                    if (aya + 1 > suraAyaCount[sura]) {
-                        suraAyaCount[sura] = aya + 1;
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn(`Could not index page ${p}:`, e);
-        }
+// Pulls the index out of the engine. Everything here is plain data the C
+// side already holds, so nothing is rendered or parsed any more.
+export function buildIndex(quranEngine) {
+    engine = quranEngine;
+
+    for (let s = 0; s < TOTAL_SURAS; ++s) {
+        suraNames[s]    = engine.suraName(s);
+        suraAyaCount[s] = engine.suraAyas(s);
     }
+    for (let p = 0; p < TOTAL_PAGES; ++p) {
+        // the page header names the sura of the page's first aya
+        suraOfPage[p] = engine.pageFirstLoc(p) >> 9;
+    }
+
+    indexEntries.length = 0;
+    indexEntries.push(...engine.getIndex());
 }
 
 export function firstPageOfSura(sura) {
-    return pageOfLoc.get(sura << 9) ?? 0;
+    return Math.max(0, engine.ayaPage(sura, 0));
 }
 
-// First aya to play for "listen from this page". A page that holds no aya
-// end marker (one long aya spanning it) falls forward to the next page
-// that does, since that is the aya being read there.
+// First aya to play for "listen from this page".
 export function firstAyaOfPage(page) {
-    for (let p = page; p < TOTAL_PAGES; ++p) {
-        if (firstLocOfPage[p]) return { ...firstLocOfPage[p] };
-    }
-    return { sura: suraOfPage[page] || 0, aya: 0 };
+    page = Math.max(0, Math.min(TOTAL_PAGES - 1, page));
+    const loc = engine.pageFirstLoc(page);
+    return { sura: loc >> 9, aya: loc & 0x1FF };
 }
 
 export function pageOfSuraAya(sura, aya) {
-    return pageOfLoc.get((sura << 9) | aya) ?? 0;
+    return Math.max(0, engine.ayaPage(sura, aya));
 }
 
 // alquran.cloud's audio CDN numbers ayat globally (1..6236) rather than

@@ -61,12 +61,19 @@ size_t quran_read_wchar(int sura, int aya, wchar_t *out, size_t len_max, bool si
 }
 
 int quran_page_of(quran_loc_t loc) {
-    for (int p = QURAN_PAGES - 1; p >= 0; --p) {
-        if (loc >= quran.pages[p]) {
-            return p;
+    // quran.pages is sorted, so look for the last page starting at or
+    // before loc
+    int lo = 0, hi = QURAN_PAGES - 1, found = -1;
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (loc >= quran.pages[mid]) {
+            found = mid;
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
         }
     }
-    return -1;
+    return found;
 }
 
 int quran_juzu_of(quran_loc_t loc) {
@@ -76,6 +83,62 @@ int quran_juzu_of(quran_loc_t loc) {
         }
     }
     return -1;
+}
+
+size_t quran_index(quran_index_entry_t *out, size_t max) {
+    // Suras and juzus are each already sorted by position, so merging the
+    // two lists gives the combined order without sorting.
+    size_t n = 0;
+    int    s = 0, j = 0;
+
+    while (s < QURAN_SURAS || j < QURAN_JUZUS) {
+        quran_index_entry_t e;
+        bool take_juzu = j < QURAN_JUZUS &&
+            (s >= QURAN_SURAS || quran.juzus[j] <= QURAN_LOC(s, 0));
+        if (take_juzu) {
+            e.kind   = QURAN_INDEX_JUZU;
+            e.number = (uint16_t) j;
+            e.loc    = quran.juzus[j];
+            ++j;
+        } else {
+            e.kind   = QURAN_INDEX_SURA;
+            e.number = (uint16_t) s;
+            e.loc    = QURAN_LOC(s, 0);
+            ++s;
+        }
+        e.page = (uint16_t) quran_page_of(e.loc);
+        if (out != NULL && n < max) out[n] = e;
+        ++n;
+    }
+    return n;
+}
+
+int quran_sura_ayas(int sura) {
+    if (sura < 0 || sura >= QURAN_SURAS) return 0;
+    return quran.sura_ayas[sura];
+}
+
+size_t quran_sura_name(int sura, wchar_t *out, size_t len) {
+    if (sura < 0 || sura >= QURAN_SURAS) return 0;
+    const wchar_t *name = quran.sura_names[sura];
+    size_t n = wcslen(name);
+    if (out == NULL) return n;
+    if (len == 0) return 0;
+    if (n >= len) n = len - 1;
+    wmemcpy(out, name, n);
+    out[n] = L'\0';
+    return n;
+}
+
+int quran_aya_page(int sura, int aya) {
+    if (sura < 0 || sura >= QURAN_SURAS) return -1;
+    if (aya  < 0 || aya  >= quran.sura_ayas[sura]) return -1;
+    return quran_page_of(QURAN_LOC(sura, aya));
+}
+
+int quran_page_first_loc(int page) {
+    if (page < 0 || page >= QURAN_PAGES) return -1;
+    return quran.pages[page];
 }
 
 int quran_search(wchar_t *target, bool simple, void *user,

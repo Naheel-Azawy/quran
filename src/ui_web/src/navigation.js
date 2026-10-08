@@ -1,4 +1,4 @@
-import { TOTAL_PAGES, TOTAL_SURAS, suraNames, suraAyaCount, suraOfPage, firstPageOfSura, pageOfSuraAya } from "./quran-index.js";
+import { TOTAL_PAGES, TOTAL_SURAS, suraNames, suraAyaCount, suraOfPage, indexEntries, firstPageOfSura, pageOfSuraAya } from "./quran-index.js";
 import { toArabicDigits, fromArabicDigits } from "./text-utils.js";
 import { closeAllPanels } from "./panels.js";
 import { t, localizeNumber } from "./strings.js";
@@ -51,39 +51,75 @@ export function syncStatus(page, nav) {
 
 let suraList, suraFilterInput;
 
+function juzuLabel(juzu) {
+    return t("navigation.juzu", { n: localizeNumber(juzu + 1) });
+}
+
+function suraListItem(entry) {
+    const s = entry.number;
+
+    const li = document.createElement("li");
+    li.className = "sura-item";
+    li.dataset.sura = s;
+    li.dataset.page = entry.page;
+    li.setAttribute("role", "option");
+
+    const badge = document.createElement("span");
+    badge.className = "sura-badge";
+    badge.textContent = toArabicDigits(s + 1);
+
+    const info = document.createElement("span");
+    info.className = "sura-info";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "sura-name";
+    nameEl.textContent = suraNames[s] || "";
+
+    const meta = document.createElement("span");
+    meta.className = "sura-meta";
+    meta.textContent = t("navigation.ayaCount", { count: localizeNumber(suraAyaCount[s] || 0) });
+
+    info.append(nameEl, meta);
+    li.append(badge, info);
+    return li;
+}
+
+// A juzu is a row between the suras, at the page where it starts.
+function juzuListItem(entry) {
+    const li = document.createElement("li");
+    li.className = "juzu-item";
+    li.dataset.juzu = entry.number;
+    li.dataset.page = entry.page;
+    li.setAttribute("role", "option");
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "juzu-name";
+    nameEl.textContent = juzuLabel(entry.number);
+
+    const meta = document.createElement("span");
+    meta.className = "juzu-meta";
+    meta.textContent = t("navigation.pageNumber", { page: localizeNumber(entry.page + 1) });
+
+    li.append(nameEl, meta);
+    return li;
+}
+
+function indexEntryMatches(entry, q) {
+    if (!q) return true;
+    const text = entry.kind === "juzu" ? juzuLabel(entry.number) : (suraNames[entry.number] || "");
+    return text.includes(q) || String(entry.number + 1).includes(q);
+}
+
+// Suras and juzus in the page order the engine gives them.
 export function renderSuraList(filter = "") {
     const q = filter.trim();
     suraList.innerHTML = "";
 
     let shown = 0;
-    for (let s = 0; s < TOTAL_SURAS; ++s) {
-        const name = suraNames[s] || "";
-        if (q && !name.includes(q) && !String(s + 1).includes(q)) continue;
+    for (const entry of indexEntries) {
+        if (!indexEntryMatches(entry, q)) continue;
         shown++;
-
-        const li = document.createElement("li");
-        li.className = "sura-item";
-        li.dataset.sura = s;
-        li.setAttribute("role", "option");
-
-        const badge = document.createElement("span");
-        badge.className = "sura-badge";
-        badge.textContent = toArabicDigits(s + 1);
-
-        const info = document.createElement("span");
-        info.className = "sura-info";
-
-        const nameEl = document.createElement("span");
-        nameEl.className = "sura-name";
-        nameEl.textContent = name;
-
-        const meta = document.createElement("span");
-        meta.className = "sura-meta";
-        meta.textContent = t("navigation.ayaCount", { count: localizeNumber(suraAyaCount[s] || 0) });
-
-        info.append(nameEl, meta);
-        li.append(badge, info);
-        suraList.appendChild(li);
+        suraList.appendChild(entry.kind === "juzu" ? juzuListItem(entry) : suraListItem(entry));
     }
 
     if (!shown) {
@@ -290,9 +326,9 @@ export function cacheNavigationDom() {
 
 export function bindNavigationUI() {
     suraList.addEventListener("click", e => {
-        const li = e.target.closest(".sura-item");
+        const li = e.target.closest(".sura-item, .juzu-item");
         if (!li) return;
-        vp.goto(firstPageOfSura(Number(li.dataset.sura)));
+        vp.goto(Number(li.dataset.page));
         closeAllPanels();
     });
 

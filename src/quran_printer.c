@@ -6,6 +6,7 @@
 #include <wctype.h>
 
 #include "quran_core.h"
+#include "quran_printer.h"
 
 #define WCHAR_MALLOC(name, count) wchar_t name[count]
 #define WCHAR_FREE(ptr) ((void) 0)
@@ -672,20 +673,27 @@ size_t fwprint_sura(FILE *f, int sura, bool simple, bool just) {
 }
 
 size_t wprint_index(wchar_t *out, size_t size) {
-    int sura, page, juzu = 0;
-    quran_loc_t loc, loc_last;
+    // One line per entry, "<page> <kind> ...", in page order; the entries
+    // come from the same quran_index() the web UI uses.
+    quran_index_entry_t entries[QURAN_SURAS + QURAN_JUZUS];
+    size_t count = quran_index(entries, sizeof(entries) / sizeof(entries[0]));
     size_t len = 0;
-    for (sura = 0; sura < QURAN_SURAS; ++sura) {
-        loc      = QURAN_LOC(sura, 0);
-        loc_last = QURAN_LOC(sura, quran.sura_ayas[sura] - 1);
-        page     = quran_page_of(loc);
-        while (juzu < QURAN_JUZUS && loc_last >= quran.juzus[juzu]) {
-            len += swprintf(out + len, size - len, L"%d الجزء %d\n",
-                            quran_page_of(quran.juzus[juzu]) + 1, juzu + 1);
-            ++juzu;
+    int    n;
+
+    if (size == 0) return 0;
+    out[0] = L'\0';
+    for (size_t i = 0; i < count; ++i) {
+        const quran_index_entry_t *e = &entries[i];
+        if (e->kind == QURAN_INDEX_JUZU) {
+            n = swprintf(out + len, size - len, L"%d الجزء %d\n",
+                         e->page + 1, e->number + 1);
+        } else {
+            n = swprintf(out + len, size - len, L"%d سورة %S (%d)\n",
+                         e->page + 1, quran.sura_names[e->number],
+                         e->number + 1);
         }
-        len += swprintf(out + len, size - len, L"%d سورة %S (%d)\n",
-                        page + 1, quran.sura_names[sura], sura + 1);
+        if (n < 0) break; // out of room: keep the whole lines written so far
+        len += n;
     }
     return len;
 }

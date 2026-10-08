@@ -12,6 +12,16 @@
 #define QURAN_SURA(loc)      ((loc) >> 9)
 #define QURAN_AYA(loc)       ((loc) & 0x01ff)
 
+// Marks a function the web build must export to JavaScript. The wasm is
+// loaded without any emscripten glue, so a function that is not exported
+// does not exist for quran-engine.js. Native builds ignore it.
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#define QURAN_API EMSCRIPTEN_KEEPALIVE
+#else
+#define QURAN_API
+#endif
+
 #define QURAN_SURAS 114
 #define QURAN_PAGES 604
 #define QURAN_JUZUS  30

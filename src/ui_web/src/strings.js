@@ -58,6 +58,8 @@ export const STRINGS = {
         "navigation.searchResultsTruncated":  "أول {shown} من {total} نتيجة",
         "navigation.searchResultsCount":      "{count} نتيجة",
         "navigation.ayaCount":                "{count} آية",
+        "navigation.juzu":                    "الجزء {n}",
+        "navigation.pageNumber":              "صفحة {page}",
 
         // ============ STATIC HTML TEXT ============
         // Verified against the real index.html -- these are the exact
@@ -83,8 +85,8 @@ export const STRINGS = {
         "audio.stop":      "إيقاف",
         "menu.tafsir":     "التفسير والترجمة",
         "menu.settings":   "الإعدادات",
-        "suras.filterPlaceholder": "ابحث عن سورة…",
-        "suras.ariaLabel":         "السور",
+        "suras.filterPlaceholder": "ابحث عن سورة أو جزء…",
+        "suras.ariaLabel":         "السور والأجزاء",
         "page.label":      "رقم الصفحة (١ - ٦٠٤)",
         "page.ariaLabel":  "اذهب إلى صفحة",
         "page.go":         "اذهب",
@@ -167,6 +169,8 @@ export const STRINGS = {
         "navigation.searchResultsTruncated":  "First {shown} of {total} results",
         "navigation.searchResultsCount":      "{count} results",
         "navigation.ayaCount":                "{count} verses",
+        "navigation.juzu":                    "Juz {n}",
+        "navigation.pageNumber":              "Page {page}",
 
         // ============ STATIC HTML TEXT ============
         "app.title":       "The Noble Quran",
@@ -188,8 +192,8 @@ export const STRINGS = {
         "audio.stop":      "Stop",
         "menu.tafsir":     "Tafsir & Translation",
         "menu.settings":   "Settings",
-        "suras.filterPlaceholder": "Search for a sura…",
-        "suras.ariaLabel":         "Suras",
+        "suras.filterPlaceholder": "Search for a sura or juz…",
+        "suras.ariaLabel":         "Suras and juzus",
         "page.label":      "Page number (1 - 604)",
         "page.ariaLabel":  "Go to page",
         "page.go":         "Go",

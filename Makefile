@@ -22,7 +22,11 @@ FLAGS_COMMON = -O3
 #FLAGS_COMMON = -g
 #FLAGS_COMMON += -fbounds-check
 FLAGS = -Wall $(FLAGS_COMMON)
-EMCC_FLAGS = -Wall $(FLAGS_COMMON) -DUNDER_WASM -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS="['_swprint_page', '_quran_read', '_quran_read_wchar', '_quran_search_locs', '_malloc', '_free', '_quran_printer_init']" -s EXPORTED_RUNTIME_METHODS=[] --no-entry
+# The quran_* / swprint_page functions JS calls are exported by marking them
+# QURAN_API in the headers (EMSCRIPTEN_KEEPALIVE, see src/quran_defs.h), so
+# they are not listed here. Only libc's malloc/free are, as they are not ours
+# to annotate.
+EMCC_FLAGS = -Wall $(FLAGS_COMMON) -DUNDER_WASM -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS="['_malloc', '_free']" -s EXPORTED_RUNTIME_METHODS=[] --no-entry
 
 # ICONS ###############################################
 
@@ -69,23 +73,35 @@ build/data.o: build/data.c
 
 # TTY #################################################
 
+# The interactive reader (src/ui_tty/tui.c) reorders and shapes Arabic with
+# libfribidi (Debian/Ubuntu: `apt install libfribidi-dev`; macOS: `brew
+# install fribidi`). FRIBIDI=0 builds without it: the reader then leaves the
+# text to a terminal that does bidi itself. Changing FRIBIDI needs a
+# `make clean-not-node` first, as make does not track it.
+FRIBIDI ?= 1
+ifeq ($(FRIBIDI),1)
+TTY_CFLAGS = -DUSE_FRIBIDI $(or $(shell pkg-config --cflags fribidi 2>/dev/null),-I/usr/include/fribidi)
+TTY_LIBS   = $(or $(shell pkg-config --libs fribidi 2>/dev/null),-lfribidi)
+endif
+
 build/version.h: build/.version
 	mkdir -p build
 	printf '#define QURAN_VERSION "%s"\n' $(VERSION) > build/version.h
 
 build/main: src/quran_defs.h src/quran_core.h src/quran_core.c \
 		src/quran_printer.h src/quran_printer.c build/version.h \
-		build/lut.o build/data.o src/ui_tty/main.c
-	gcc $(FLAGS) src/quran_core.c src/quran_printer.c \
 		build/lut.o build/data.o src/ui_tty/main.c \
-		-o build/main
+		src/ui_tty/tui.h src/ui_tty/tui.c
+	gcc $(FLAGS) $(TTY_CFLAGS) src/quran_core.c src/quran_printer.c \
+		build/lut.o build/data.o src/ui_tty/main.c src/ui_tty/tui.c \
+		-o build/main $(TTY_LIBS)
 	strip build/main
 
 install: build/main
 	mkdir -p $(BINPREFIX)
-	cp -f build/main $(BINPREFIX)/quran_base
-	sed 's#./build/main#quran_base#' src/ui_tty/main.sh > $(BINPREFIX)/quran
-	chmod +x $(BINPREFIX)/quran
+	cp -f build/main $(BINPREFIX)/quran
+	# quran_base was the binary behind the old wrapper script; drop a stale one
+	rm -f $(BINPREFIX)/quran_base
 
 uninstall:
 	rm -f $(BINPREFIX)/quran_base $(BINPREFIX)/quran
