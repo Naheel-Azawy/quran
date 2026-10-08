@@ -8,8 +8,84 @@
 
 #include "../quran_core.h"
 #include "../quran_printer.h"
+#include "bidi.h"
 #include "tui.h"
 #include "../../build/version.h"
+
+// Quran text goes out through the functions below. By default it is run
+// through libfribidi, as piping the output through `fribidi -w 75` used to do:
+// lines wider than CLI_WIDTH are wrapped at spaces, every line is reordered and
+// shaped, and right-to-left lines are padded to CLI_WIDTH so they sit flush
+// right. With -b (or a build without fribidi) the text is printed as it is, in
+// logical order, for a terminal that does bidi itself.
+#define CLI_WIDTH 75
+
+static bool    cli_bidi = true;
+static wchar_t cli_line[4096];
+static size_t  cli_len;
+
+// One display line: reordered, padded if right to left, newline added.
+static void cli_emit(const wchar_t *s, size_t n) {
+    wchar_t vis[BIDI_MAX];
+    bool    rtl;
+    size_t  vn = bidi_visual(s, n, vis, true, false, &rtl);
+
+    if (rtl)
+        for (int i = bidi_str_w(vis, vn); i < CLI_WIDTH; ++i) putwchar(L' ');
+    for (size_t i = 0; i < vn; ++i) putwchar(vis[i]);
+    putwchar(L'\n');
+}
+
+// Columns a logical string takes once shaped: a lam-alef pair becomes one
+// ligature, so measuring the logical text would overstate it.
+static int cli_width(const wchar_t *s, size_t n) {
+    wchar_t vis[BIDI_MAX];
+    bool    rtl;
+    size_t  vn = bidi_visual(s, n, vis, true, false, &rtl);
+    return bidi_str_w(vis, vn);
+}
+
+// The pending logical line, wrapped to CLI_WIDTH where it is wider.
+static void cli_end_line(void) {
+    size_t seg = 0, i = 0;
+    int    sw = 0;
+
+    if (cli_len < BIDI_MAX && cli_width(cli_line, cli_len) <= CLI_WIDTH) {
+        cli_emit(cli_line, cli_len);
+    } else {
+        while (i < cli_len) {
+            size_t j = i;
+            int    ww;
+            while (j < cli_len && cli_line[j] != L' ') ++j;
+            ww = cli_width(cli_line + i, j - i < BIDI_MAX ? j - i : BIDI_MAX - 1);
+            if (sw > 0 && sw + 1 + ww > CLI_WIDTH) { // the word starts a new line
+                cli_emit(cli_line + seg, i - 1 - seg);
+                seg = i;
+                sw = 0;
+            }
+            sw += (sw ? 1 : 0) + ww;
+            i = j < cli_len ? j + 1 : j;
+        }
+        cli_emit(cli_line + seg, cli_len - seg);
+    }
+    cli_len = 0;
+}
+
+static void cli_putc(wchar_t c) {
+    if (!cli_bidi) { putwchar(c); return; }
+    if (c == L'\n') { cli_end_line(); return; }
+    if (cli_len == sizeof cli_line / sizeof *cli_line - 1) cli_end_line(); // absurdly long
+    cli_line[cli_len++] = c;
+}
+
+static void cli_puts(const wchar_t *s) {
+    for (; *s; ++s) cli_putc(*s);
+}
+
+// A last line without a newline of its own.
+static void cli_flush(void) {
+    if (cli_bidi && cli_len > 0) cli_end_line();
+}
 
 void read_wchar_test() {
     bool simple = true;
@@ -30,37 +106,46 @@ void read_wchar_test() {
 }
 
 void print_aya(int sura, int aya, bool simple) {
-    wprintf(L"{%d} ", aya + 1);
-
+    wchar_t      num[16];
     quran_chr_t *txt;
     size_t       len;
     wchar_t      c;
+
+    swprintf(num, sizeof num / sizeof *num, L"{%d} ", aya + 1);
+    cli_puts(num);
 
     len = quran_read(sura, aya, &txt);
     for (size_t i = 0; i < len; ++i) {
         c = (wchar_t) QURAN_TXT_DEC(txt[i]);
         if (simple) c = quran_simplify_char(c);
         if (!c) continue;
-        wprintf(L"%C", c);
+        cli_putc(c);
     }
-    wprintf(L"\n");
+    cli_putc(L'\n');
 }
 
 void print_sura(int sura, bool simple, bool list) {
     if (!list) {
-        fwprint_sura(stdout, sura, simple, true);
+        // swprint_sura takes no size; the whole book is an upper bound for any sura
+        wchar_t *buf = malloc(QURAN_PAGES * QURAN_PAGE_MAX_WCHARS * sizeof *buf);
+        if (!buf) return;
+        swprint_sura(buf, sura, simple, true);
+        cli_puts(buf);
+        free(buf);
         return;
     }
 
     for (int a = 0; a < quran.sura_ayas[sura]; ++a) {
         print_aya(sura, a, simple);
     }
-    wprintf(L"\n");
+    cli_putc(L'\n');
 }
 
 void print_page(int page, bool simple, bool list) {
     if (!list) {
-        fwprint_page(stdout, page, simple, true);
+        wchar_t buf[QURAN_PAGE_MAX_WCHARS];
+        swprint_page(buf, page, simple, true);
+        cli_puts(buf);
         return;
     }
 
@@ -89,7 +174,7 @@ void print_all(bool simple) {
                 c = (wchar_t) QURAN_TXT_DEC(txt[i]);
                 if (simple) c = quran_simplify_char(c);
                 if (!c) continue;
-                wprintf(L"%C", c);
+                cli_putc(c);
             }
         }
     }
@@ -99,7 +184,9 @@ void main_onmatch(int i, quran_loc_t loc, int start, int end, void *_) {
     int sura = QURAN_SURA(loc);
     int aya  = QURAN_AYA(loc);
     int page = quran_page_of(loc);
-    wprintf(L"%d. {س%d آ%d ص%d} ", i, sura + 1, aya + 1, page + 1);
+    wchar_t head[64];
+    swprintf(head, sizeof head / sizeof *head, L"%d. {س%d آ%d ص%d} ", i, sura + 1, aya + 1, page + 1);
+    cli_puts(head);
 
     quran_chr_t *txt;
     size_t       len;
@@ -109,13 +196,13 @@ void main_onmatch(int i, quran_loc_t loc, int start, int end, void *_) {
     len = quran_read(sura, aya, &txt);
     for (size_t i = 0; i < len; ++i) {
         c = (wchar_t) QURAN_TXT_DEC(txt[i]);
-        if ((int) i == start) wprintf(L">>", c);
+        if ((int) i == start) cli_puts(L">>");
         if (simple) c = quran_simplify_char(c);
         if (!c) continue;
-        wprintf(L"%C", c);
-        if ((int) i == end) wprintf(L"<<", c);
+        cli_putc(c);
+        if ((int) i == end) cli_puts(L"<<");
     }
-    wprintf(L"\n");
+    cli_putc(L'\n');
 }
 
 int count_letters(bool and_tashkeel) {
@@ -137,6 +224,12 @@ int count_letters(bool and_tashkeel) {
     return count;
 }
 
+static void print_marker(int aya) {
+    wchar_t buf[24];
+    swprintf(buf, sizeof buf / sizeof *buf, L" {%d} ", aya);
+    cli_puts(buf);
+}
+
 void print_from(bool and_tashkeel, int char_start, int str_len) {
     int count = 0;
     bool can_print;
@@ -154,12 +247,12 @@ void print_from(bool and_tashkeel, int char_start, int str_len) {
                 can_print = count >= char_start &&
                     count < (char_start + str_len);
                 if (can_print) {
-                    wprintf(L"%C", c);
+                    cli_putc(c);
                 }
                 ++count;
             }
             if (can_print) {
-                wprintf(L" {%d} ", a);
+                print_marker(a);
             }
         }
     }
@@ -202,13 +295,13 @@ void print_from_word(bool and_tashkeel, int word_start, int word_count) {
                 can_print = count >= word_start &&
                     count < (word_start + word_count);
                 if (can_print) {
-                    wprintf(L"%C", c);
+                    cli_putc(c);
                 }
                 if (c == ' ') ++count;
             }
             ++count;
             if (can_print) {
-                wprintf(L" {%d} ", a);
+                print_marker(a);
             }
         }
     }
@@ -233,7 +326,8 @@ void help(char *bin) {
     wprintf(L"Version %s\n", QURAN_VERSION);
     wprintf(L"  (no arguments)   interactive reader, same as -t\n");
     wprintf(L"  -t [PAGE]        interactive reader; opens PAGE, default the last viewed\n");
-    wprintf(L"  -b               reader: no fribidi, leave the text to the terminal\n");
+    wprintf(L"  -b               no fribidi: print text in logical order, for a terminal\n");
+    wprintf(L"                   that does bidi itself. Default: reordered, wrapped at %d\n", CLI_WIDTH);
     wprintf(L"  -s               simple text; no tashkeel\n");
     wprintf(L"  -l               print as a simple list\n");
     wprintf(L"  -p <PAGE>        print a page\n");
@@ -281,6 +375,8 @@ int main(int argc, char **argv) {
         args[i] = argv[optind];
     }
 
+    cli_bidi = !no_bidi && bidi_compiled();
+
     // no arguments on a terminal: the interactive reader
     if (argc == 1 && isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) tui = true;
 
@@ -297,7 +393,9 @@ int main(int argc, char **argv) {
     if (exp) { // experimental
         foo();
     } else if (index) { // list pages, suras, and juzus
-        fwprint_index(stdout);
+        wchar_t buf[8192];
+        wprint_index(buf, sizeof buf / sizeof *buf);
+        cli_puts(buf);
     } else if (find) { // search for target text
         char *target = args[0];
         size_t len = strlen(target);
@@ -329,5 +427,6 @@ int main(int argc, char **argv) {
         print_page(page, simple, list);
     }
 
+    cli_flush();
     return 0;
 }

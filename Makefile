@@ -75,8 +75,9 @@ build/data.o: build/data.c
 
 # The interactive reader (src/ui_tty/tui.c) reorders and shapes Arabic with
 # libfribidi (Debian/Ubuntu: `apt install libfribidi-dev`; macOS: `brew
-# install fribidi`). FRIBIDI=0 builds without it: the reader then leaves the
-# text to a terminal that does bidi itself. Changing FRIBIDI needs a
+# install fribidi`), and so does the command line output. FRIBIDI=0 builds
+# without it: text is then left in logical order, for a terminal that does bidi
+# itself, same as passing -b. Changing FRIBIDI needs a
 # `make clean-not-node` first, as make does not track it.
 FRIBIDI ?= 1
 ifeq ($(FRIBIDI),1)
@@ -91,10 +92,10 @@ build/version.h: build/.version
 build/main: src/quran_defs.h src/quran_core.h src/quran_core.c \
 		src/quran_printer.h src/quran_printer.c build/version.h \
 		build/lut.o build/data.o src/ui_tty/main.c \
-		src/ui_tty/tui.h src/ui_tty/tui.c
+		src/ui_tty/tui.h src/ui_tty/tui.c src/ui_tty/bidi.h src/ui_tty/bidi.c
 	gcc $(FLAGS) $(TTY_CFLAGS) src/quran_core.c src/quran_printer.c \
 		build/lut.o build/data.o src/ui_tty/main.c src/ui_tty/tui.c \
-		-o build/main $(TTY_LIBS)
+		src/ui_tty/bidi.c -o build/main $(TTY_LIBS)
 	strip build/main
 
 install: build/main

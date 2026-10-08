@@ -4,7 +4,7 @@
 // screen, SGR mouse reporting, and absolute cursor positioning, about 150
 // lines. curses would not help with the hard part anyway, which is Arabic:
 // it does neither bidi reordering nor shaping, and models stacked combining
-// marks poorly. That is done here with libfribidi (see visual()), exactly
+// marks poorly. That is done with libfribidi (see bidi.c), exactly
 // as the fribidi command line tool does it, or left to the terminal when
 // bidi is off.
 
@@ -21,19 +21,15 @@
 #include <unistd.h>
 #include <wchar.h>
 
-#ifdef USE_FRIBIDI
-#include <fribidi.h>
-#endif
-
 #include "../quran_core.h"
 #include "../quran_printer.h"
+#include "bidi.h"
 #include "tui.h"
 
 #define BLOCK_W    QURAN_LINE_MAX_WIDTH // columns of one printed page line
 #define PAGE_ROWS  (1 + 16)             // header + body lines
 #define BOTTOM_ROWS 2                   // message/prompt row + button row
 #define QMAX       128                  // longest prompt text
-#define BIDI_MAX   1024                 // longest line sent to the bidi step
 #define MAX_INDEX  (QURAN_SURAS + QURAN_JUZUS)
 #define MAX_LINES  1024                 // wrapped lines of one page in list mode
 
@@ -95,11 +91,7 @@ static struct {
     bool  quit;
 } S;
 
-#ifdef USE_FRIBIDI
-#define HAVE_BIDI 1
-#else
-#define HAVE_BIDI 0
-#endif
+#define HAVE_BIDI bidi_compiled()
 
 // ---------------------------------------------------------------------------
 // Output buffer
@@ -354,52 +346,21 @@ static ev_t next_event(void) {
 }
 
 // ---------------------------------------------------------------------------
-// Text: cell widths and bidi
+// Text: cell widths and bidi (shared with the CLI, see bidi.c)
 // ---------------------------------------------------------------------------
 
-// Columns a character takes. Harakat and the Quranic marks (stop signs
-// included) stack on the previous letter and take none; small waw and yeh
-// (U+06E5, U+06E6) are spacing letters although quran_is_tashkeel lists them.
 static int cell_w(wchar_t c) {
-    if (c == 0xFEFF || (c >= 0x200B && c <= 0x200F) || (c >= 0x2060 && c <= 0x2064))
-        return 0;
-    if (c >= 0x0300 && c <= 0x036F) return 0;
-    if (quran_is_tashkeel(c) && c != 0x06E5 && c != 0x06E6) return 0;
-    return 1;
+    return bidi_cell_w(c);
 }
 
 static int str_w(const wchar_t *s, size_t n) {
-    int w = 0;
-    for (size_t i = 0; i < n; ++i) w += cell_w(s[i]);
-    return w;
+    return bidi_str_w(s, n);
 }
 
-// Logical text to what is printed left to right. With libfribidi this is the
-// same pipeline as the fribidi tool: bidi levels, Arabic joining and shaping,
-// reordering with marks kept after their letter, and bracket mirroring. With
-// bidi off the text is passed through for a terminal that does it itself.
 // out holds BIDI_MAX characters. *rtl tells the paragraph direction used.
 static size_t visual(const wchar_t *in, size_t len, wchar_t *out,
                      bool force_rtl, bool *rtl) {
-    if (len > BIDI_MAX - 1) len = BIDI_MAX - 1;
-    *rtl = force_rtl;
-#ifdef USE_FRIBIDI
-    if (S.bidi) {
-        static FriBidiChar l[BIDI_MAX], v[BIDI_MAX];
-        FriBidiParType base = force_rtl ? FRIBIDI_PAR_RTL : FRIBIDI_PAR_ON;
-        size_t n = 0;
-        for (size_t i = 0; i < len; ++i) l[i] = (FriBidiChar) in[i];
-        fribidi_log2vis(l, (FriBidiStrIndex) len, &base, v, NULL, NULL, NULL);
-        for (size_t i = 0; i < len; ++i) {
-            if (v[i] == 0xFEFF) continue; // filler left by a lam-alef ligature
-            out[n++] = (wchar_t) v[i];
-        }
-        *rtl = FRIBIDI_IS_RTL(base);
-        return n;
-    }
-#endif
-    wmemcpy(out, in, len);
-    return len;
+    return bidi_visual(in, len, out, S.bidi, force_rtl, rtl);
 }
 
 // ---------------------------------------------------------------------------
