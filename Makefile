@@ -1,6 +1,6 @@
 PREFIX    = /usr/local
 BINPREFIX = $(DESTDIR)$(PREFIX)/bin
-VERSION   = 0.0.5
+VERSION   = 0.0.6
 SERVER    = me@naheel.xyz
 
 all: tty web
