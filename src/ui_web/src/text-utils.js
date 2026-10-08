@@ -5,7 +5,7 @@ export function parseHeaderLine(line) {
 // Reads "سورة <name> <num>" whether it comes from the top-of-page header
 // or a mid-page "--{ ... }--" marker; both use this exact shape.
 export function parseSuraLabel(text) {
-    const m = text.trim().match(/سورة\s+(.+) (\d+)$/);
+    const m = text.trim().replace(/ـ/g, '').match(/سورة\s+(.+) (\d+)$/);
     return { name: m[1], sura: Number(m[2]) - 1 };
 }
 

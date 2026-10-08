@@ -194,7 +194,9 @@ $(ANDROID_OUT)/assets/index.html: build/web/.stamp
 	rm -rf $(ANDROID_OUT)/assets
 	mkdir -p $(ANDROID_OUT)/assets
 	cp -r build/web/. $(ANDROID_OUT)/assets/
-	rm $(ANDROID_OUT)/assets/res/icon* $(ANDROID_OUT)/assets/res/screenshot*
+	rm $(ANDROID_OUT)/assets/res/icon* \
+		$(ANDROID_OUT)/assets/res/screenshot* \
+		$(ANDROID_OUT)/assets/*.map
 
 # Set to 1 to bring back flat raster PNG launcher icons (one bitmap per
 # density bucket, rendered via rsvg-convert -- exactly what this project
