@@ -95,7 +95,7 @@ function suraHeaderSvg(sura) {
         .replace('id="sura-name"',   `id="${uid}-sura-name"`)
         .replace('id="sura-number"', `id="${uid}-sura-number"`)
         .replace('id="aya-count"',   `id="${uid}-aya-count"`)
-        .replace("{{sura_name}}",   escapeHtml((suraNames[sura] || "").replace(/&nbsp;/g, " ")))
+        .replace("{{sura_name}}",   "سورة " + escapeHtml((suraNames[sura] || "").replace(/&nbsp;/g, " ")))
         .replace("{{sura_number}}", toArabicDigits(sura + 1))
         .replace("{{aya_count}}",   toArabicDigits(suraAyaCount[sura] || 0));
 }

@@ -421,10 +421,16 @@ input, button, select {
     transform-origin: center;
 }
 
-.sura-svg-name { font-family: var(--quran-font), serif; }
+.sura-svg-name {
+    font-family: var(--quran-font), serif;
+    font-size: 700px;
+}
+
 /* sans-serif to match the aya marker's digit, and because the Quran font
    would try to draw its own ornament around numerals */
-.sura-svg-num  { font-family: sans-serif; }
+.sura-svg-num  {
+    font-family: sans-serif;
+}
 
 .aya {
     transition: .3s;
