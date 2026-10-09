@@ -187,6 +187,26 @@ function tag_ayas(input, sura) {
     return parts.join('');
 }
 
+// WebKit (seen on iOS; reproduced in WebKitGTK) mis-justifies a line whose
+// first and last items are plain text: with `text-align-last: justify` on
+// #output it gives the slack to one end only. Centered lines (the first two
+// and last four pages, and every basmala) slide sideways and ordinary lines
+// come out ragged at the left edge. Blink always shares the slack evenly. An
+// empty zero-width inline-block at both ends of each line makes the text an
+// interior item, and WebKit then shares it evenly too. See .zw in style.css.
+//
+// A line can start with closing tags: they end elements opened on the previous
+// line, such as the sura banner, whose absolutely positioned artwork is sized
+// from the element's fragments. The leading marker goes after them, so those
+// elements do not gain a second, zero-width fragment on this line.
+const LINE_EDGE = '<span class="zw"></span>';
+
+function markLineEdges(l) {
+    if (!l) return l;
+    const closing = /^(?:<\/span>)+/.exec(l)?.[0] ?? "";
+    return closing + LINE_EDGE + l.slice(closing.length) + LINE_EDGE;
+}
+
 export function render(engine, page, simple) {
     const lines = engine.get_page(page, simple).split("\n");
     const [header, sura] = mk_header(lines[0]);
@@ -204,7 +224,7 @@ export function render(engine, page, simple) {
     // non-breaking spaces if the line is centered (starts with a space)
     body = body.map(l => l[0] == ' ' ? l.replace(/ /g, "&nbsp;") : l);
     body = tag_ayas(body.join("\n"), sura).split("\n");
-    body = body.map(l => `${l}<br>`).join("\n");
+    body = body.map(l => `${markLineEdges(l)}<br>`).join("\n");
     body = body.replace(/\{(\d+)\}/g, (_, num) =>
         `<span class="aya-marker">${ayaMarkerSvg()}<span class="aya-marker-num">${toArabicDigits(num)}</span></span>`);
 

@@ -432,6 +432,14 @@ input, button, select {
     font-family: sans-serif;
 }
 
+/* Marks both ends of every text line, see LINE_EDGE in render.js: an atomic
+   inline that takes no room. */
+.zw {
+    display: inline-block;
+    width:   0;
+    height:  0;
+}
+
 .aya {
     transition: .3s;
     cursor:     pointer;
